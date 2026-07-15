@@ -29,5 +29,7 @@ jobs:
           else
             git add data/backtest.json
             git commit -m "chore: cap nhat ket qua backtest bo luat"
-            git push
+            for i in 1 2 3 4; do
+              git pull --rebase origin main && git push && break || sleep $((i*3))
+            done
           fi
