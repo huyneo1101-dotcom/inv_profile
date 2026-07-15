@@ -1,5 +1,43 @@
 {
-  "generatedAt": null,
-  "note": "Do backtest.py (Action btc-backtest.yml) tao ra. null = chua chay backtest lan nao.",
-  "coverage": null, "tiers": null, "current": null
+  "coverage": {
+    "from": "2026-02-01",
+    "to": "2026-07-15",
+    "days": 365,
+    "horizonDays": 90,
+    "hasMVRV": true
+  },
+  "tiers": [
+    {
+      "tier": "Thoang",
+      "n90": 11,
+      "avgFwd90": -12.5,
+      "pctNeg90": 100.0,
+      "avgFwd30": -7.0
+    },
+    {
+      "tier": "Can chu y",
+      "n90": 64,
+      "avgFwd90": 1.7,
+      "pctNeg90": 53.1,
+      "avgFwd30": 1.8
+    },
+    {
+      "tier": "Rat than trong",
+      "n90": 0,
+      "avgFwd90": null,
+      "pctNeg90": null,
+      "avgFwd30": null
+    }
+  ],
+  "current": {
+    "date": "2026-07-15",
+    "subscore": 2,
+    "tier": "Can chu y",
+    "n": 64,
+    "avgFwd90": 1.7,
+    "pctNeg90": 53.1,
+    "statement": "Trang thai hien tai o nhom \"Can chu y\". Trong qua khu co 64 lan tuong tu; sau 90 ngay, 53.1% so lan gia THAP hon (trung binh 1.7%)."
+  },
+  "generatedAt": "2026-07-15T04:09:55Z",
+  "note": "Backtest phan loi bo luat (EMA/RSI/MVRV). Khong gom ETF/Fed/funding/Fear&Greed vi thieu lich su free. Loi suat = % thay doi gia sau horizon ngay."
 }
