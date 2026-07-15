@@ -1,0 +1,10 @@
+{
+  "generatedAt": null,
+  "note": "File này do GitHub Action btc-data.yml tự cập nhật hằng ngày (giá BTC + EMA50/EMA200). App ưu tiên lấy dữ liệu LIVE từ CoinGecko; file này chỉ là bản dự phòng khi offline hoặc API lỗi. Giá trị null = Action chưa chạy lần nào.",
+  "currency": "usd",
+  "price": null,
+  "ema50": null,
+  "ema200": null,
+  "trend": null,
+  "history": []
+}

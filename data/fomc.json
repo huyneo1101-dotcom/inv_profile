@@ -1,0 +1,13 @@
+{
+  "note": "Lịch họp FOMC (Fed) — ngày ra quyết định là ngày thứ 2 của cuộc họp 2 ngày. Sửa tay khi có lịch năm mới. Nguồn: federalreserve.gov/monetarypolicy/fomccalendars.htm",
+  "meetings": [
+    { "date": "2026-01-28", "label": "Cuộc họp FOMC tháng 1" },
+    { "date": "2026-03-18", "label": "Cuộc họp FOMC tháng 3" },
+    { "date": "2026-04-29", "label": "Cuộc họp FOMC tháng 4" },
+    { "date": "2026-06-17", "label": "Cuộc họp FOMC tháng 6" },
+    { "date": "2026-07-29", "label": "Cuộc họp FOMC tháng 7" },
+    { "date": "2026-09-16", "label": "Cuộc họp FOMC tháng 9" },
+    { "date": "2026-10-28", "label": "Cuộc họp FOMC tháng 10" },
+    { "date": "2026-12-09", "label": "Cuộc họp FOMC tháng 12" }
+  ]
+}

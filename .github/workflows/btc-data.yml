@@ -1,0 +1,233 @@
+name: Cap nhat du lieu BTC
+# Lay gia+EMA (CoinGecko), ETF (Farside), 8-K MicroStrategy (SEC), macro (FRED),
+# MVRV Z-score (bitcoin-data.com) -> ghi data/*.json + append history.json.
+# Chay tren may GitHub, commit vao main. App uu tien LIVE phia client; day la ban du phong/bo sung.
+# LUU Y: workflow theo lich chi chay tu nhanh mac dinh (main) — kich hoat sau khi merge.
+on:
+  schedule:
+    - cron: '30 0 * * *'   # ~07:30 gio VN moi ngay
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: btc-data
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Gia BTC + EMA + RSI (CoinGecko)
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, datetime, sys, os
+          URL = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily"
+          try:
+              req = urllib.request.Request(URL, headers={"User-Agent": "btc-tin-hieu-action"})
+              with urllib.request.urlopen(req, timeout=60) as r: j = json.load(r)
+          except Exception as e:
+              print("CoinGecko loi:", e); sys.exit(0)
+          prices = [p[1] for p in j.get("prices", []) if isinstance(p[1], (int, float))]
+          dates  = [datetime.datetime.utcfromtimestamp(p[0]/1000).strftime("%Y-%m-%d") for p in j.get("prices", [])]
+          if len(prices) < 200: print("Thieu du lieu:", len(prices)); sys.exit(0)
+          def ema(v,p):
+              k=2/(p+1); e=sum(v[:p])/p
+              for x in v[p:]: e=x*k+e*(1-k)
+              return e
+          def rsi(v,p=14):
+              ag=al=0
+              for i in range(1,p+1):
+                  d=v[i]-v[i-1]
+                  if d>=0: ag+=d
+                  else: al-=d
+              ag/=p; al/=p
+              for i in range(p+1,len(v)):
+                  d=v[i]-v[i-1]; ag=(ag*(p-1)+max(d,0))/p; al=(al*(p-1)+max(-d,0))/p
+              return 100 if al==0 else 100-100/(1+ag/al)
+          price,e50,e200,r = prices[-1],ema(prices,50),ema(prices,200),rsi(prices,14)
+          trend = "above_both" if price>e50 and price>e200 else "below_both" if price<e50 and price<e200 else "mixed"
+          out={"generatedAt":datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "note":"Auto by Action. App uu tien LIVE CoinGecko; day la du phong.",
+               "currency":"usd","price":round(price,2),"ema50":round(e50,2),"ema200":round(e200,2),
+               "rsi14":round(r,1),"trend":trend,
+               "history":[{"date":d,"price":round(p,2)} for d,p in zip(dates[-90:],prices[-90:])]}
+          os.makedirs("data",exist_ok=True)
+          json.dump(out,open("data/btc.json","w"),ensure_ascii=False,indent=2)
+          print("btc.json OK:",out["price"],out["trend"],"rsi",out["rsi14"])
+          PY
+
+      - name: Macro (FRED — can secret FRED_API_KEY)
+        continue-on-error: true
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, datetime, os
+          key=os.environ.get("FRED_API_KEY","").strip()
+          if not key:
+              print("Chua co FRED_API_KEY -> bo qua macro. Them secret de bat."); raise SystemExit(0)
+          def series(sid):
+              u=(f"https://api.stlouisfed.org/fred/series/observations?series_id={sid}"
+                 f"&api_key={key}&file_type=json&sort_order=desc&limit=40")
+              try: obs=json.load(urllib.request.urlopen(u,timeout=45)).get("observations",[])
+              except Exception as e: print(sid,"loi:",e); return None
+              vals=[]
+              for o in obs:
+                  try: vals.append((o["date"],float(o["value"])))
+                  except: pass
+              if not vals: return None
+              latest=vals[0][1]
+              ref=vals[min(20,len(vals)-1)][1]  # ~20 obs truoc
+              chg=latest-ref
+              return {"value":round(latest,3),"chg20":round(chg,3),
+                      "trend":"up" if chg>0 else "down" if chg<0 else "flat","date":vals[0][0]}
+          dxy=series("DTWEXBGS"); us10y=series("DGS10"); real=series("DFII10"); m2=series("WM2NS")
+          out={"generatedAt":datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "note":"Auto tu FRED (St. Louis Fed). DTWEXBGS=chi so Do broad, DGS10=10Y, DFII10=10Y real, WM2NS=M2.",
+               "dxy":dxy,"us10y":us10y,"realYield":real,"m2":m2}
+          os.makedirs("data",exist_ok=True)
+          json.dump(out,open("data/macro.json","w"),ensure_ascii=False,indent=2)
+          print("macro.json OK:",{k:(v and v["value"]) for k,v in [("dxy",dxy),("10y",us10y),("m2",m2)]})
+          PY
+
+      - name: On-chain MVRV Z-score (bitcoin-data.com)
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, datetime, os
+          U="https://bitcoin-data.com/v1/mvrv-zscore/last"
+          try:
+              req=urllib.request.Request(U,headers={"User-Agent":"btc-tin-hieu","Accept":"application/json"})
+              j=json.load(urllib.request.urlopen(req,timeout=45))
+          except Exception as e:
+              print("bitcoin-data.com loi:",e,"-> bo qua."); raise SystemExit(0)
+          # parse deu: tim so thuc trong cac field co ten chua 'mvrv'/'zscore', hoac gia tri so dau tien
+          def find(o):
+              if isinstance(o,dict):
+                  for k,v in o.items():
+                      if isinstance(v,(int,float)) and ("mvrv" in k.lower() or "zscore" in k.lower() or "z-score" in k.lower()):
+                          return float(v)
+                  for k,v in o.items():
+                      try: return float(v)
+                      except: pass
+              if isinstance(o,list) and o: return find(o[-1])
+              try: return float(o)
+              except: return None
+          z=find(j)
+          if z is None: print("Khong parse duoc MVRV Z."); raise SystemExit(0)
+          out={"generatedAt":datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "source":"bitcoin-data.com (BGeometrics)","mvrvZscore":round(z,3)}
+          os.makedirs("data",exist_ok=True)
+          json.dump(out,open("data/onchain.json","w"),ensure_ascii=False,indent=2)
+          print("onchain.json OK: MVRV Z =",out["mvrvZscore"])
+          PY
+
+      - name: Dong ETF (Farside — best-effort)
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, datetime, os, re
+          URL="https://farside.co.uk/btc/"
+          try:
+              req=urllib.request.Request(URL,headers={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36","Accept":"text/html"})
+              html=urllib.request.urlopen(req,timeout=60).read().decode("utf-8","ignore")
+          except Exception as e:
+              print("Farside khong truy cap:",e); raise SystemExit(0)
+          rows=re.findall(r"(\d{1,2}\s+[A-Za-z]{3}\s+20\d{2})(.*?)</tr>",html,re.S)
+          def num(s):
+              s=s.replace(",","").replace("(","-").replace(")","").replace("$","").strip()
+              try: return float(s)
+              except: return None
+          recs=[]
+          for ds,rest in rows:
+              nums=[num(x) for x in re.findall(r"-?\(?\$?[\d,]+\.?\d*\)?",re.sub(r"<[^>]+>"," ",rest))]
+              nums=[n for n in nums if n is not None]
+              if nums:
+                  try: d=datetime.datetime.strptime(ds,"%d %b %Y").strftime("%Y-%m-%d")
+                  except: continue
+                  recs.append({"date":d,"total":nums[-1]})
+          if not recs: print("Khong parse Farside."); raise SystemExit(0)
+          recs=recs[-7:]; last=recs[-1]["total"]; streak=0
+          for r in reversed(recs):
+              if r["total"]<0: streak+=1
+              else: break
+          out={"generatedAt":datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "source":"farside.co.uk/btc (best-effort)","unit":"trieu USD",
+               "latestDate":recs[-1]["date"],"latestNetFlow":round(last,1),"outflowStreak":streak,"recent":recs}
+          os.makedirs("data",exist_ok=True)
+          json.dump(out,open("data/etf.json","w"),ensure_ascii=False,indent=2)
+          print("etf.json OK:",last,"streak",streak)
+          PY
+
+      - name: Filing MicroStrategy (SEC EDGAR)
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, datetime, os
+          U="https://data.sec.gov/submissions/CIK0001050446.json"
+          try:
+              req=urllib.request.Request(U,headers={"User-Agent":"btc-tin-hieu contact huyneo1101@gmail.com"})
+              j=json.load(urllib.request.urlopen(req,timeout=60))
+          except Exception as e:
+              print("SEC loi:",e); raise SystemExit(0)
+          rec=j.get("filings",{}).get("recent",{})
+          forms=rec.get("form",[]); dates=rec.get("filingDate",[]); accs=rec.get("accessionNumber",[])
+          items=[]
+          for i in range(len(forms)):
+              if forms[i]=="8-K":
+                  acc=accs[i].replace("-","")
+                  items.append({"date":dates[i],"form":"8-K",
+                    "url":f"https://www.sec.gov/Archives/edgar/data/1050446/{acc}/{accs[i]}-index.htm"})
+              if len(items)>=5: break
+          out={"generatedAt":datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "source":"data.sec.gov","company":"MicroStrategy / Strategy (CIK 1050446)",
+               "note":"Liet ke 8-K gan nhat de nguoi dung tu xem mua/ban.",
+               "latest8K":items[0] if items else None,"recent8K":items}
+          os.makedirs("data",exist_ok=True)
+          json.dump(out,open("data/mstr.json","w"),ensure_ascii=False,indent=2)
+          print("mstr.json OK:",len(items))
+          PY
+
+      - name: Append history.json
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json, os, datetime
+          def rd(p,d):
+              try: return json.load(open(p))
+              except: return d
+          btc=rd("data/btc.json",{}); mac=rd("data/macro.json",{})
+          onc=rd("data/onchain.json",{}); etf=rd("data/etf.json",{})
+          hist=rd("data/history.json",{"rows":[]}); rows=hist.get("rows",[])
+          today=datetime.datetime.utcnow().strftime("%Y-%m-%d")
+          def g(o,*ks):
+              for k in ks:
+                  o=o.get(k) if isinstance(o,dict) else None
+                  if o is None: return None
+              return o
+          row={"date":today,"price":btc.get("price"),"ema50":btc.get("ema50"),"ema200":btc.get("ema200"),
+               "rsi14":btc.get("rsi14"),"trend":btc.get("trend"),
+               "mvrvZ":onc.get("mvrvZscore"),
+               "dxy":g(mac,"dxy","value"),"us10y":g(mac,"us10y","value"),"m2":g(mac,"m2","value"),
+               "etfNet":etf.get("latestNetFlow"),"etfStreak":etf.get("outflowStreak")}
+          rows=[r for r in rows if r.get("date")!=today]+[row]
+          rows=rows[-1500:]
+          hist["rows"]=rows
+          hist["note"]="Lich su chi so hang ngay (auto append). Dung cho z-score + audit."
+          json.dump(hist,open("data/history.json","w"),ensure_ascii=False,indent=2)
+          print("history.json:",len(rows),"rows; today price",row["price"],"mvrvZ",row["mvrvZ"])
+          PY
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data/; then
+            echo "khong doi — bo qua."
+          else
+            git add data/*.json
+            git commit -m "chore: cap nhat du lieu BTC (gia, macro, on-chain, ETF, MSTR, history)"
+            git push
+          fi

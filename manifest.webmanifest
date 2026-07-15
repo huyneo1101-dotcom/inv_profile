@@ -1,0 +1,16 @@
+{
+  "name": "BTC Tín Hiệu",
+  "short_name": "BTC Tín Hiệu",
+  "description": "Bảng tín hiệu thận trọng cho Bitcoin — xu hướng giá (EMA50/200), lịch họp Fed, dòng ETF, MicroStrategy. Trợ lý ra quyết định, không phải lời khuyên đầu tư.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0e14",
+  "theme_color": "#f7931a",
+  "lang": "vi",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

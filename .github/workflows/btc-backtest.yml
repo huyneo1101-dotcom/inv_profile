@@ -1,0 +1,33 @@
+name: Backtest bo luat BTC
+# Chay btc-tin-hieu/backtest.py: tua nguoc lich su, cham diem bo luat, do loi suat 30/90 ngay sau.
+# Ghi data/backtest.json de app hien "Kiem chung lich su".
+# Chay tay (workflow_dispatch) hoac hang tuan (Chu nhat) — backtest nang hon, khong can hang ngay.
+on:
+  schedule:
+    - cron: '0 1 * * 0'   # ~08:00 gio VN Chu nhat
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: btc-backtest
+  cancel-in-progress: false
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run backtest
+        run: |
+          python3 backtest.py --out data/backtest.json --horizon 90
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data/backtest.json; then
+            echo "khong doi — bo qua."
+          else
+            git add data/backtest.json
+            git commit -m "chore: cap nhat ket qua backtest bo luat"
+            git push
+          fi

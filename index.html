@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>BTC Tín Hiệu</title>
+<meta name="theme-color" content="#f7931a" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#141a26; --panel2:#1b2333; --line:#26304a;
+    --text:#e7ecf5; --muted:#94a0b8; --orange:#f7931a;
+    --green:#2ec77a; --yellow:#f2c14e; --red:#ef5350; --blue:#5b9dff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  .wrap{max-width:640px;margin:0 auto;padding:16px 14px 48px}
+  header{display:flex;align-items:center;gap:10px;margin:6px 0 4px}
+  header .logo{width:34px;height:34px;border-radius:9px;background:var(--orange);
+    display:flex;align-items:center;justify-content:center;color:#0b0e14;font-weight:800;font-size:20px}
+  header h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.2px}
+  .sub{color:var(--muted);font-size:12.5px;margin:2px 0 16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:16px;margin-bottom:14px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);
+    margin:0 0 10px;font-weight:700}
+  .meter{text-align:center;padding:22px 16px}
+  .lamp{width:96px;height:96px;border-radius:50%;margin:0 auto 12px;position:relative;
+    display:flex;align-items:center;justify-content:center;font-size:38px;
+    box-shadow:0 0 0 6px rgba(255,255,255,.04)}
+  .lamp.green{background:radial-gradient(circle at 35% 30%,#5fe6a0,#1e9c5c);box-shadow:0 0 34px rgba(46,199,122,.5),0 0 0 6px rgba(46,199,122,.12)}
+  .lamp.yellow{background:radial-gradient(circle at 35% 30%,#ffdd85,#d9a021);box-shadow:0 0 34px rgba(242,193,78,.5),0 0 0 6px rgba(242,193,78,.12)}
+  .lamp.red{background:radial-gradient(circle at 35% 30%,#ff8a86,#c8302c);box-shadow:0 0 34px rgba(239,83,80,.5),0 0 0 6px rgba(239,83,80,.12)}
+  .lamp.gray{background:radial-gradient(circle at 35% 30%,#4a556e,#2b3346)}
+  .meter .level{font-size:22px;font-weight:800;margin:2px 0 4px}
+  .meter .guide{color:var(--muted);font-size:14px;max-width:440px;margin:0 auto}
+  .scorebar{height:8px;border-radius:6px;background:var(--panel2);margin:16px auto 0;max-width:320px;overflow:hidden;display:flex}
+  .scorebar > i{display:block;height:100%}
+  .price-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .price{font-size:30px;font-weight:800;letter-spacing:.3px}
+  .chg{font-size:14px;font-weight:700}
+  .up{color:var(--green)} .down{color:var(--red)}
+  .emagrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .ema{background:var(--panel2);border-radius:11px;padding:10px 12px}
+  .ema .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .ema .v{font-size:16px;font-weight:700;margin-top:2px}
+  .ema .rel{font-size:11.5px;margin-top:1px;font-weight:600}
+  .trendtag{display:inline-block;margin-top:14px;padding:5px 11px;border-radius:20px;font-size:12.5px;font-weight:700}
+  .trendtag.below{background:rgba(239,83,80,.15);color:#ff9a97}
+  .trendtag.above{background:rgba(46,199,122,.15);color:#7fe6ab}
+  .trendtag.mixed{background:rgba(242,193,78,.15);color:#ffd97a}
+  svg.spark{width:100%;height:56px;margin-top:14px;display:block}
+  .fed-days{font-size:30px;font-weight:800;color:var(--blue)}
+  .fed-days small{font-size:14px;color:var(--muted);font-weight:600}
+  /* 3 chỉ báo nhanh */
+  .ind3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .ind{background:var(--panel2);border-radius:12px;padding:12px 10px;text-align:center}
+  .ind .kk{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .ind .vv{font-size:22px;font-weight:800;margin:3px 0 1px}
+  .ind .tt{font-size:11.5px;font-weight:700}
+  .gauge{height:6px;border-radius:4px;margin-top:8px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--red));position:relative}
+  .gauge > i{position:absolute;top:-3px;width:3px;height:12px;background:#fff;border-radius:2px;transform:translateX(-50%)}
+  .switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .switch{position:relative;width:50px;height:29px;flex:0 0 auto}
+  .switch input{opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+  .slider{position:absolute;inset:0;background:var(--panel2);border:1px solid var(--line);
+    border-radius:20px;transition:.2s;pointer-events:none}
+  .slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:2.5px;
+    background:#8a94ab;border-radius:50%;transition:.2s}
+  .switch input:checked + .slider{background:rgba(239,83,80,.35);border-color:var(--red)}
+  .switch input:checked + .slider:before{transform:translateX(21px);background:var(--red)}
+  textarea{width:100%;margin-top:10px;background:var(--panel2);border:1px solid var(--line);
+    color:var(--text);border-radius:10px;padding:9px 11px;font:inherit;font-size:13px;resize:vertical;min-height:38px}
+  textarea::placeholder{color:#6b768f}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+  .auto{font-size:12.5px;margin-top:10px;padding:9px 11px;border-radius:10px;background:var(--panel2)}
+  .auto b{color:var(--text)}
+  .badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;
+    background:rgba(91,157,255,.18);color:#9cc2ff;margin-left:6px;vertical-align:middle;letter-spacing:.3px}
+  a{color:var(--blue)}
+  .factor{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+  .factor:first-child{border-top:0}
+  .factor .dot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:0 0 auto}
+  .factor .ftext .fl{font-weight:700;font-size:14px}
+  .factor .ftext .fd{color:var(--muted);font-size:12.5px}
+  .factor .fw{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;align-self:center}
+  .btn{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--text);font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+  .btn.on{background:rgba(247,147,26,.16);border-color:var(--orange);color:#ffc06b}
+  .disclaimer{font-size:11.5px;color:var(--muted);text-align:center;margin-top:18px;line-height:1.6}
+  .updated{font-size:11.5px;color:var(--muted);text-align:center;margin-top:8px}
+  .err{background:rgba(239,83,80,.12);border:1px solid rgba(239,83,80,.4);border-radius:10px;
+    padding:9px 11px;font-size:12.5px;color:#ff9a97;margin-bottom:12px}
+  .skel{color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js" crossorigin></script>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+const LS_KEY = 'btc-tin-hieu:v1';
+const CG_CHART   = 'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily';
+const FNG_URL    = 'https://api.alternative.me/fng/?limit=1';
+const FUND_URL   = 'https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT';
+
+/* ---------- helpers ---------- */
+function loadState(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }catch(e){ return {}; } }
+function saveState(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){} }
+function fmtUSD(n){ return (n==null||isNaN(n)) ? '—' : '$'+Math.round(n).toLocaleString('en-US'); }
+function computeEMA(prices, period){
+  if(!prices || prices.length < period) return null;
+  const k = 2/(period+1);
+  let ema = prices.slice(0,period).reduce((a,b)=>a+b,0)/period;
+  for(let i=period;i<prices.length;i++) ema = prices[i]*k + ema*(1-k);
+  return ema;
+}
+function computeRSI(prices, period){
+  period = period||14;
+  if(!prices || prices.length < period+1) return null;
+  let avgG=0, avgL=0;
+  for(let i=1;i<=period;i++){ const d=prices[i]-prices[i-1]; if(d>=0) avgG+=d; else avgL-=d; }
+  avgG/=period; avgL/=period;
+  for(let i=period+1;i<prices.length;i++){
+    const d=prices[i]-prices[i-1];
+    avgG=(avgG*(period-1)+Math.max(d,0))/period;
+    avgL=(avgL*(period-1)+Math.max(-d,0))/period;
+  }
+  if(avgL===0) return 100;
+  return 100 - 100/(1+avgG/avgL);
+}
+function trendOf(price, e50, e200){
+  if(price==null || e50==null || e200==null) return null;
+  if(price > e50 && price > e200) return 'above_both';
+  if(price < e50 && price < e200) return 'below_both';
+  return 'mixed';
+}
+function daysToNextFOMC(meetings){
+  if(!meetings || !meetings.length) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  let best = null;
+  for(const m of meetings){
+    const diff = Math.round((new Date(m.date+'T00:00:00') - today)/86400000);
+    if(diff >= 0 && (best==null || diff < best.days)) best = {days:diff, meeting:m};
+  }
+  return best;
+}
+
+/* ---------- tính điểm thận trọng ---------- */
+const MAX_SCORE = 14;
+function computeScore(s){
+  const { trend, fomc, rsi, fng, funding, etf, mstr, mvrv, macro } = s;
+  let score = 0; const F = [];
+  const add = (w,c,l,d)=>{ score+=w; F.push({w,c,l,d}); };
+
+  if(trend === 'below_both') add(2,'red','Giá dưới cả EMA50 & EMA200','Xu hướng ngắn–trung hạn đang yếu (đà giảm chưa đảo chiều).');
+  else if(trend === 'mixed') add(1,'yellow','Giá nằm giữa EMA50 và EMA200','Xu hướng chưa rõ ràng, đang giằng co.');
+  else if(trend === 'above_both') add(0,'green','Giá trên cả EMA50 & EMA200','Cấu trúc xu hướng đang tích cực.');
+
+  if(fomc){
+    if(fomc.days <= 3) add(2,'red','Sát cuộc họp Fed (còn '+fomc.days+' ngày)','Quanh ngày Fed công bố, giá dễ chao đảo mạnh — cả hai chiều.');
+    else if(fomc.days <= 7) add(1,'yellow','Gần cuộc họp Fed (còn '+fomc.days+' ngày)','Bắt đầu vào vùng nhạy cảm trước quyết định lãi suất.');
+  }
+  if(rsi!=null){
+    if(rsi >= 70) add(1,'red','RSI cao ('+rsi.toFixed(0)+') — quá mua','Giá đã tăng nóng, dễ điều chỉnh — không nên đuổi giá.');
+    else if(rsi <= 30) add(0,'green','RSI thấp ('+rsi.toFixed(0)+') — quá bán','Giá đã giảm sâu, thường là vùng gom hàng dần.');
+  }
+  if(fng && fng.value!=null){
+    if(fng.value >= 75) add(1,'red','Tâm lý "Tham lam tột độ" ('+fng.value+')','Đám đông đang hưng phấn — lúc rủi ro điều chỉnh cao nhất.');
+    else if(fng.value <= 25) add(0,'green','Tâm lý "Sợ hãi tột độ" ('+fng.value+')','Đám đông đang hoảng — thường là lúc mua tốt hơn là bán.');
+  }
+  if(funding && funding.rate!=null){
+    const pct = funding.rate*100;
+    if(funding.rate >= 0.0005) add(1,'red','Funding cao ('+pct.toFixed(3)+'%/8h)','Đòn bẩy long quá đông — dễ bị "long squeeze" (rớt nhanh).');
+    else if(funding.rate < 0) add(0,'green','Funding âm ('+pct.toFixed(3)+'%/8h)','Phe long không quá đông — ít rủi ro bị đè.');
+  }
+  if(etf.active) add(1,'red','Dòng ETF đang rút ra'+(etf.auto?'':' (bạn tự bật)'),
+    etf.auto ? ('Quỹ ETF bán ròng '+etf.streak+' phiên liền — thiếu lực mua đỡ giá.') : 'Tiền quỹ lớn đang bán/đứng ngoài — thiếu lực mua đỡ giá.');
+  if(mstr) add(1,'red','MicroStrategy vừa bán lớn (bạn tự bật)','Tay chơi hay gom mua bất ngờ bán ra — tín hiệu bất thường.');
+
+  if(mvrv!=null){
+    if(mvrv >= 7) add(2,'red','MVRV Z-score rất cao ('+mvrv.toFixed(1)+')','Giá đang cao hơn nhiều so với giá vốn toàn mạng — vùng đỉnh lịch sử, rủi ro rất lớn.');
+    else if(mvrv >= 5) add(1,'red','MVRV Z-score cao ('+mvrv.toFixed(1)+')','Giá đã vượt xa giá vốn trung bình — vùng định giá nóng.');
+    else if(mvrv < 0.1) add(0,'green','MVRV Z-score thấp ('+mvrv.toFixed(1)+')','Giá quanh/dưới giá vốn toàn mạng — vùng đáy lịch sử, thường là cơ hội gom.');
+  }
+  if(macro){
+    const y = macro.us10y, d = macro.dxy, m = macro.m2;
+    if(y && y.trend==='up' && y.chg20>=0.3) add(1,'red','Lợi suất 10Y tăng nhanh ('+y.value+'%)','Lãi suất dài hạn lên — siết thanh khoản, bất lợi cho tài sản rủi ro như BTC.');
+    if(d && d.trend==='up' && d.chg20>=1.5) add(1,'red','Đồng đô mạnh lên (chỉ số '+d.value+')','Đô mạnh thường đè giá tài sản rủi ro và crypto.');
+    if(m && m.trend==='down') add(1,'red','Cung tiền M2 co lại','Thanh khoản toàn hệ thống thu hẹp — thiếu "tiền mới" đẩy giá.');
+    else if(m && m.trend==='up') add(0,'green','Cung tiền M2 đang nới','Thanh khoản mở rộng — nền thuận lợi hơn cho tài sản rủi ro.');
+  }
+
+  let level, color, guide;
+  if(score <= 3){ level='Thoáng'; color='green';
+    guide='Ít tín hiệu cản trở. Môi trường tương đối bình thường — vẫn nên mua chia nhỏ theo kế hoạch, đừng dồn một lần.'; }
+  else if(score <= 7){ level='Cần chú ý'; color='yellow';
+    guide='Có vài tín hiệu thận trọng. Cân nhắc chia nhỏ lệnh mua, giữ một phần tiền mặt dự phòng, đừng vội.'; }
+  else { level='Rất thận trọng'; color='red';
+    guide='Nhiều tín hiệu cùng xuất hiện. Ưu tiên chia nhỏ, không dồn tiền, chờ thị trường rõ ràng hơn trước khi mua mạnh.'; }
+  return { score, factors:F, level, color, guide };
+}
+
+function Spark({data}){
+  if(!data || data.length < 2) return null;
+  const w=600, h=56, pad=3;
+  const min=Math.min(...data), max=Math.max(...data), rng=(max-min)||1;
+  const step=(w-pad*2)/(data.length-1);
+  const pts=data.map((v,i)=>[pad+i*step, h-pad-((v-min)/rng)*(h-pad*2)]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const col = data[data.length-1] >= data[0] ? 'var(--green)' : 'var(--red)';
+  return <svg className="spark" viewBox={'0 0 '+w+' '+h} preserveAspectRatio="none">
+    <path d={d} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/></svg>;
+}
+
+/* ---------- app ---------- */
+function App(){
+  const init = loadState();
+  const [mstr, setMstr] = useState(!!init.mstrSelling);
+  const [etfManual, setEtfManual] = useState(!!init.etfOutflow);
+  const [etfNote, setEtfNote] = useState(init.etfNote||'');
+  const [mstrNote, setMstrNote] = useState(init.mstrNote||'');
+  const [notify, setNotify] = useState(!!init.notify);
+
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [fomc, setFomc] = useState(null);
+  const [fng, setFng] = useState(null);
+  const [funding, setFunding] = useState(null);
+  const [etfData, setEtfData] = useState(null);
+  const [mstrData, setMstrData] = useState(null);
+  const [mvrv, setMvrv] = useState(null);
+  const [macro, setMacro] = useState(null);
+  const [backtest, setBacktest] = useState(null);
+  const [updatedAt, setUpdatedAt] = useState(null);
+
+  useEffect(()=>{ saveState({etfOutflow:etfManual,mstrSelling:mstr,etfNote,mstrNote,notify,
+    lastNotifiedDate:loadState().lastNotifiedDate||''}); },[etfManual,mstr,etfNote,mstrNote,notify]);
+
+  useEffect(()=>{ fetch('./data/fomc.json').then(r=>r.json())
+    .then(j=>setFomc(daysToNextFOMC(j.meetings))).catch(()=>{}); },[]);
+  useEffect(()=>{ fetch('./data/etf.json').then(r=>r.json())
+    .then(j=>{ if(j && j.latestNetFlow!=null) setEtfData(j); }).catch(()=>{}); },[]);
+  useEffect(()=>{ fetch('./data/mstr.json').then(r=>r.json())
+    .then(j=>{ if(j && j.latest8K) setMstrData(j); }).catch(()=>{}); },[]);
+  useEffect(()=>{ fetch('./data/onchain.json').then(r=>r.json())
+    .then(j=>{ if(j && j.mvrvZscore!=null) setMvrv(j.mvrvZscore); }).catch(()=>{}); },[]);
+  useEffect(()=>{ fetch('./data/macro.json').then(r=>r.json())
+    .then(j=>{ if(j && (j.dxy||j.us10y||j.m2)) setMacro(j); }).catch(()=>{}); },[]);
+  useEffect(()=>{ fetch('./data/backtest.json').then(r=>r.json())
+    .then(j=>{ if(j && j.current) setBacktest(j); }).catch(()=>{}); },[]);
+
+  // giá + EMA + RSI (CoinGecko live, fallback file)
+  useEffect(()=>{
+    let done=false;
+    (async()=>{
+      try{
+        const r = await fetch(CG_CHART);
+        if(!r.ok) throw new Error('CoinGecko '+r.status);
+        const j = await r.json();
+        const prices = (j.prices||[]).map(p=>p[1]).filter(v=>typeof v==='number');
+        if(prices.length < 200) throw new Error('thiếu dữ liệu');
+        if(!done){
+          setData({price:prices[prices.length-1], e50:computeEMA(prices,50), e200:computeEMA(prices,200),
+            prev:prices[prices.length-2], rsi:computeRSI(prices,14), history:prices.slice(-90), live:true});
+          setUpdatedAt(new Date()); setLoading(false);
+        }
+        return;
+      }catch(e){
+        try{
+          const j2 = await (await fetch('./data/btc.json')).json();
+          if(j2 && j2.price!=null && !done){
+            const hp=(j2.history||[]).map(h=>h.price);
+            setData({price:j2.price,e50:j2.ema50,e200:j2.ema200,prev:null,
+              rsi:computeRSI(hp,14),history:hp,live:false});
+            setUpdatedAt(j2.generatedAt?new Date(j2.generatedAt):null);
+            setErr('Không lấy được giá trực tiếp — đang dùng dữ liệu dự phòng.');
+            setLoading(false); return;
+          }
+        }catch(e2){}
+        if(!done){ setErr('Chưa lấy được dữ liệu giá BTC. Kiểm tra kết nối rồi thử lại.'); setLoading(false); }
+      }
+    })();
+    return ()=>{done=true;};
+  },[]);
+
+  useEffect(()=>{ fetch(FNG_URL).then(r=>r.json()).then(j=>{
+    const d=j && j.data && j.data[0]; if(d) setFng({value:parseInt(d.value,10),cls:d.value_classification});
+  }).catch(()=>{}); },[]);
+  useEffect(()=>{ fetch(FUND_URL).then(r=>r.json()).then(j=>{
+    if(j && j.lastFundingRate!=null) setFunding({rate:parseFloat(j.lastFundingRate)});
+  }).catch(()=>{}); },[]);
+
+  const trend = data ? trendOf(data.price, data.e50, data.e200) : null;
+  const etfAutoOutflow = !!(etfData && etfData.outflowStreak >= 2);
+  const etf = { active: etfManual || etfAutoOutflow, auto: etfAutoOutflow && !etfManual, streak: etfData?etfData.outflowStreak:0 };
+  const result = useMemo(()=>computeScore({trend,fomc,rsi:data?data.rsi:null,fng,funding,etf,mstr,mvrv,macro}),
+    [trend,fomc,data,fng,funding,etf.active,etf.auto,etf.streak,mstr,mvrv,macro]);
+
+  useEffect(()=>{
+    if(!notify || loading || !data) return;
+    if(!('Notification' in window) || Notification.permission!=='granted') return;
+    const today = new Date().toISOString().slice(0,10);
+    const st = loadState();
+    if(st.lastNotifiedDate === today) return;
+    if(result.color==='red' || (fomc && fomc.days<=2)){
+      try{ new Notification('BTC Tín Hiệu — '+result.level, {body:result.guide, icon:'icon.svg'});
+        saveState({...st, lastNotifiedDate:today}); }catch(e){}
+    }
+  },[notify,loading,data,result,fomc]);
+
+  const toggleNotify = useCallback(async ()=>{
+    if(notify){ setNotify(false); return; }
+    if(!('Notification' in window)){ alert('Trình duyệt không hỗ trợ thông báo.'); return; }
+    let p = Notification.permission;
+    if(p!=='granted') p = await Notification.requestPermission();
+    if(p==='granted') setNotify(true); else alert('Bạn chưa cấp quyền thông báo.');
+  },[notify]);
+
+  const chg = data && data.prev ? (data.price-data.prev)/data.prev*100 : null;
+  const relTag = (v,e)=> e==null||v==null ? '' : (v>=e ? 'up' : 'down');
+  const relTxt = (v,e)=> e==null||v==null ? '' : (v>=e ? '▲ trên' : '▼ dưới');
+  const barColors = {red:'var(--red)',yellow:'var(--yellow)',green:'var(--green)'};
+  const rsiColor = data&&data.rsi!=null ? (data.rsi>=70?'var(--red)':data.rsi<=30?'var(--green)':'var(--text)') : 'var(--muted)';
+  const rsiTxt = data&&data.rsi!=null ? (data.rsi>=70?'Quá mua':data.rsi<=30?'Quá bán':'Trung tính') : '';
+  const fngColor = fng ? (fng.value>=75?'var(--red)':fng.value<=25?'var(--green)':'var(--text)') : 'var(--muted)';
+  const fundPct = funding ? funding.rate*100 : null;
+  const fundColor = funding ? (funding.rate>=0.0005?'var(--red)':funding.rate<0?'var(--green)':'var(--text)') : 'var(--muted)';
+
+  return (
+    <div className="wrap">
+      <header><div className="logo">₿</div><h1>BTC Tín Hiệu</h1></header>
+      <div className="sub">Bảng tín hiệu thận trọng — trợ lý ra quyết định mua từ từ, không phải lời khuyên đầu tư.</div>
+
+      {err && <div className="err">{err}</div>}
+
+      {/* ĐÈN TỔNG */}
+      <div className="card meter">
+        <div className={'lamp '+(loading?'gray':result.color)}>
+          {loading?'…':(result.color==='green'?'🟢':result.color==='yellow'?'🟡':'🔴')}
+        </div>
+        <div className="level">{loading?'Đang tính…':('Mức thận trọng: '+result.level)}</div>
+        <div className="guide">{loading?'Đang lấy dữ liệu thị trường.':result.guide}</div>
+        {!loading && <div className="scorebar">
+          <i style={{width:Math.min(result.score,MAX_SCORE)/MAX_SCORE*100+'%',background:barColors[result.color]}}></i>
+        </div>}
+      </div>
+
+      {/* GIÁ + EMA */}
+      <div className="card">
+        <h2>Giá BTC &amp; xu hướng</h2>
+        {loading && <div className="skel">Đang tải giá…</div>}
+        {!loading && data && <div>
+          <div className="price-row">
+            <span className="price">{fmtUSD(data.price)}</span>
+            {chg!=null && <span className={'chg '+(chg>=0?'up':'down')}>
+              {(chg>=0?'▲ +':'▼ ')+chg.toFixed(2)}% <span style={{color:'var(--muted)',fontWeight:400}}>(24h)</span></span>}
+          </div>
+          <Spark data={data.history}/>
+          <div className="emagrid">
+            <div className="ema"><div className="k">TB 50 ngày (EMA50)</div><div className="v">{fmtUSD(data.e50)}</div>
+              <div className={'rel '+relTag(data.price,data.e50)}>{relTxt(data.price,data.e50)} giá hiện tại</div></div>
+            <div className="ema"><div className="k">TB 200 ngày (EMA200)</div><div className="v">{fmtUSD(data.e200)}</div>
+              <div className={'rel '+relTag(data.price,data.e200)}>{relTxt(data.price,data.e200)} giá hiện tại</div></div>
+          </div>
+          {trend && <span className={'trendtag '+(trend==='below_both'?'below':trend==='above_both'?'above':'mixed')}>
+            {trend==='below_both'?'Dưới cả 2 đường TB → xu hướng yếu'
+              :trend==='above_both'?'Trên cả 2 đường TB → xu hướng tích cực':'Nằm giữa 2 đường TB → giằng co'}</span>}
+        </div>}
+      </div>
+
+      {/* 3 CHỈ BÁO NHANH */}
+      <div className="card">
+        <h2>Chỉ báo nhanh</h2>
+        <div className="ind3">
+          <div className="ind">
+            <div className="kk">RSI (14 ngày)</div>
+            <div className="vv" style={{color:rsiColor}}>{data&&data.rsi!=null?data.rsi.toFixed(0):'—'}</div>
+            <div className="tt" style={{color:rsiColor}}>{rsiTxt}</div>
+            {data&&data.rsi!=null && <div className="gauge"><i style={{left:Math.max(0,Math.min(100,data.rsi))+'%'}}></i></div>}
+          </div>
+          <div className="ind">
+            <div className="kk">Sợ hãi &amp; Tham lam</div>
+            <div className="vv" style={{color:fngColor}}>{fng?fng.value:'—'}</div>
+            <div className="tt" style={{color:fngColor}}>{fng?fngLabel(fng.value):''}</div>
+            {fng && <div className="gauge"><i style={{left:Math.max(0,Math.min(100,fng.value))+'%'}}></i></div>}
+          </div>
+          <div className="ind">
+            <div className="kk">Funding /8h</div>
+            <div className="vv" style={{color:fundColor,fontSize:'18px'}}>{fundPct!=null?fundPct.toFixed(3)+'%':'—'}</div>
+            <div className="tt" style={{color:fundColor}}>{funding?(funding.rate>=0.0005?'Long nóng':funding.rate<0?'Long yếu':'Bình thường'):''}</div>
+          </div>
+        </div>
+        <div className="hint">RSI &gt;70 = quá mua (dễ chỉnh) · &lt;30 = quá bán. Sợ hãi/Tham lam: 0 = sợ tột độ, 100 = tham lam tột độ. Funding cao = phe long đông, dễ bị đè.</div>
+      </div>
+
+      {/* ON-CHAIN MVRV */}
+      {mvrv!=null && <div className="card">
+        <h2>On-chain — MVRV Z-score</h2>
+        <div className="price-row">
+          <span className="price" style={{color: mvrv>=7?'var(--red)':mvrv>=5?'var(--yellow)':mvrv<0.1?'var(--green)':'var(--text)'}}>{mvrv.toFixed(2)}</span>
+          <span className="chg" style={{color:'var(--muted)',fontWeight:600}}>
+            {mvrv>=7?'Vùng đỉnh lịch sử':mvrv>=5?'Định giá nóng':mvrv<0.1?'Vùng đáy — cơ hội gom':'Trung tính'}</span>
+        </div>
+        <div className="hint">So sánh giá với "giá vốn trung bình toàn mạng". Trong quá khứ: &gt;7 thường là vùng đỉnh (bán), &lt;0 là vùng đáy (gom). Nguồn: bitcoin-data.com.</div>
+      </div>}
+
+      {/* MACRO */}
+      {macro && <div className="card">
+        <h2>Vĩ mô (FRED)</h2>
+        <div className="ind3">
+          <div className="ind">
+            <div className="kk">Chỉ số Đô la</div>
+            <div className="vv" style={{fontSize:'18px'}}>{macro.dxy?macro.dxy.value:'—'}</div>
+            <div className="tt" style={{color: macro.dxy&&macro.dxy.trend==='up'?'var(--red)':'var(--green)'}}>
+              {macro.dxy?(macro.dxy.trend==='up'?'▲ mạnh lên':'▼ yếu đi'):''}</div>
+          </div>
+          <div className="ind">
+            <div className="kk">Lợi suất 10Y</div>
+            <div className="vv" style={{fontSize:'18px'}}>{macro.us10y?macro.us10y.value+'%':'—'}</div>
+            <div className="tt" style={{color: macro.us10y&&macro.us10y.trend==='up'?'var(--red)':'var(--green)'}}>
+              {macro.us10y?(macro.us10y.trend==='up'?'▲ tăng':'▼ giảm'):''}</div>
+          </div>
+          <div className="ind">
+            <div className="kk">Cung tiền M2</div>
+            <div className="vv" style={{fontSize:'18px'}}>{macro.m2?macro.m2.trend==='up'?'Nới':'Co':'—'}</div>
+            <div className="tt" style={{color: macro.m2&&macro.m2.trend==='up'?'var(--green)':'var(--red)'}}>
+              {macro.m2?(macro.m2.trend==='up'?'▲ thanh khoản ↑':'▼ thanh khoản ↓'):''}</div>
+          </div>
+        </div>
+        <div className="hint">Đô mạnh + lợi suất tăng + M2 co = môi trường siết tiền, bất lợi cho BTC. Ngược lại là thuận lợi.</div>
+      </div>}
+
+      {/* FED */}
+      <div className="card">
+        <h2>Đếm ngược cuộc họp Fed (FOMC)</h2>
+        {fomc ? <div>
+          <div className="fed-days">{fomc.days} <small>ngày nữa</small></div>
+          <div className="hint">{fomc.meeting.label} — ngày {fomc.meeting.date.split('-').reverse().join('/')}. Quanh ngày này giá thường biến động mạnh, khó đoán hướng.</div>
+        </div> : <div className="skel">Chưa có lịch họp sắp tới trong dữ liệu.</div>}
+      </div>
+
+      {/* ETF */}
+      <div className="card">
+        <h2>Dòng tiền ETF</h2>
+        {etfData && <div className="auto">
+          <b>Tự động</b><span className="badge">AUTO</span><br/>
+          Ngày {etfData.latestDate}: dòng ròng <b style={{color:etfData.latestNetFlow<0?'var(--red)':'var(--green)'}}>
+            {etfData.latestNetFlow<0?'':'+'}{etfData.latestNetFlow} triệu $</b>
+          {etfData.outflowStreak>=2 && <span> · đang rút ròng <b>{etfData.outflowStreak}</b> phiên liền</span>}
+          <div className="hint">Nguồn Farside (tự cập nhật). Nếu bạn có tin mới hơn, dùng công tắc dưới để ghi đè.</div>
+        </div>}
+        <div className="switch-row" style={{marginTop:etfData?12:0}}>
+          <div><b>{etfData?'Ghi đè tay: đang rút ra':'ETF đang rút ra?'}</b>
+            <div className="hint">Bật khi bạn đọc tin các quỹ ETF bán ròng nhiều phiên liền.</div></div>
+          <label className="switch"><input type="checkbox" checked={etfManual} onChange={e=>setEtfManual(e.target.checked)}/><span className="slider"></span></label>
+        </div>
+        <textarea placeholder="Ghi chú (vd: rút ròng 3 phiên liền, ~-500 triệu $)…" value={etfNote} onChange={e=>setEtfNote(e.target.value)}/>
+      </div>
+
+      {/* MSTR */}
+      <div className="card">
+        <h2>MicroStrategy (Strategy)</h2>
+        {mstrData && mstrData.latest8K && <div className="auto">
+          <b>Filing gần nhất</b><span className="badge">AUTO</span><br/>
+          8-K ngày {mstrData.latest8K.date} — <a href={mstrData.latest8K.url} target="_blank" rel="noopener">xem trên SEC ↗</a>
+          <div className="hint">App không tự đoán mua hay bán — bạn mở filing xem, nếu là bán lớn thì bật công tắc dưới.</div>
+        </div>}
+        <div className="switch-row" style={{marginTop:mstrData&&mstrData.latest8K?12:0}}>
+          <div><b>Vừa bán lớn / bất thường?</b>
+            <div className="hint">Bật khi có tin họ bán ra lượng BTC đáng kể (họ vốn hầu như chỉ mua).</div></div>
+          <label className="switch"><input type="checkbox" checked={mstr} onChange={e=>setMstr(e.target.checked)}/><span className="slider"></span></label>
+        </div>
+        <textarea placeholder="Ghi chú (vd: bán ~216 triệu $ — cần xác minh nguồn)…" value={mstrNote} onChange={e=>setMstrNote(e.target.value)}/>
+      </div>
+
+      {/* PHÂN TÍCH */}
+      <div className="card">
+        <h2>Các tín hiệu đang tính ({result.score}/{MAX_SCORE} điểm thận trọng)</h2>
+        {result.factors.length===0 && <div className="skel">Chưa có tín hiệu nào.</div>}
+        {result.factors.map((f,i)=>(
+          <div className="factor" key={i}>
+            <span className="dot" style={{background:f.c==='red'?'var(--red)':f.c==='yellow'?'var(--yellow)':'var(--green)'}}></span>
+            <div className="ftext"><div className="fl">{f.l}</div><div className="fd">{f.d}</div></div>
+            <div className="fw">{f.w>0?('+'+f.w):'0'}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* BACKTEST */}
+      {backtest && backtest.current && <div className="card">
+        <h2>Kiểm chứng lịch sử (backtest)</h2>
+        <div style={{fontSize:'14px',lineHeight:1.6,background:'var(--panel2)',borderRadius:12,padding:'12px 13px'}}>
+          {backtest.current.statement}
+        </div>
+        {backtest.tiers && <div style={{marginTop:12}}>
+          {backtest.tiers.map((t,i)=>(
+            <div className="factor" key={i} style={t.tier===backtest.current.tier?{background:'rgba(247,147,26,.07)',borderRadius:8}:null}>
+              <span className="dot" style={{background:t.tier==='Rat than trong'?'var(--red)':t.tier==='Can chu y'?'var(--yellow)':'var(--green)'}}></span>
+              <div className="ftext">
+                <div className="fl">{t.tier==='Rat than trong'?'Rất thận trọng':t.tier==='Can chu y'?'Cần chú ý':'Thoáng'} {t.tier===backtest.current.tier?'← hiện tại':''}</div>
+                <div className="fd">{t.n90>0?(t.n90+' lần · giá 90 ngày sau: TB '+t.avgFwd90+'% · '+t.pctNeg90+'% số lần giảm'):'chưa đủ dữ liệu'}</div>
+              </div>
+            </div>
+          ))}
+        </div>}
+        <div className="hint">
+          {backtest.coverage && ('Dữ liệu '+backtest.coverage.from+' → '+backtest.coverage.to+' ('+backtest.coverage.days+' ngày)'+(backtest.coverage.hasMVRV?', có MVRV':', chưa có MVRV')+'. ')}
+          Backtest chỉ dùng tín hiệu tính được từ lịch sử (EMA, RSI, MVRV) — chưa gồm ETF/Fed/funding vì thiếu lịch sử miễn phí. Quá khứ không đảm bảo tương lai.
+        </div>
+      </div>}
+
+      {/* NHẮC */}
+      <div className="card">
+        <h2>Nhắc nhở</h2>
+        <button className={'btn'+(notify?' on':'')} onClick={toggleNotify}>
+          {notify?'🔔 Đang bật nhắc — bấm để tắt':'🔕 Bật nhắc khi thị trường thận trọng'}
+        </button>
+        <div className="hint">Khi mở app mà mức là 🔴 hoặc sát ngày Fed (≤2 ngày), app nhắc 1 lần/ngày. (Giới hạn: chỉ nhắc khi bạn mở app — trình duyệt không cho app tĩnh chạy ngầm khi đóng hẳn.)</div>
+      </div>
+
+      {updatedAt && <div className="updated">
+        Dữ liệu giá: {data && data.live?'trực tiếp (CoinGecko)':'dự phòng'} · cập nhật {updatedAt.toLocaleString('vi-VN')}</div>}
+      <div className="disclaimer">
+        ⚠️ Công cụ tổng hợp tín hiệu để tham khảo, <b>không phải lời khuyên đầu tư</b>.
+        Không tín hiệu nào đảm bảo giá sẽ lên hay xuống. Tự chịu trách nhiệm với quyết định của mình,
+        chỉ dùng tiền bạn sẵn sàng chấp nhận rủi ro.
+      </div>
+    </div>
+  );
+}
+function fngLabel(v){
+  if(v<=25) return 'Sợ tột độ'; if(v<=45) return 'Sợ hãi';
+  if(v<=55) return 'Trung tính'; if(v<=75) return 'Tham lam'; return 'Tham lam tột độ';
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
