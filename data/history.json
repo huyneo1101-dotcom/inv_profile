@@ -1,4 +1,19 @@
 {
-  "note": "Lich su chi so hang ngay do Action append (price, ema, rsi, mvrvZ, macro). Dung cho z-score + audit. Backtest tu fetch lich su sau tu nguon goc.",
-  "rows": []
+  "note": "Lich su chi so hang ngay (auto append). Dung cho z-score + audit.",
+  "rows": [
+    {
+      "date": "2026-07-15",
+      "price": 64745.07,
+      "ema50": 65101.62,
+      "ema200": 75682.84,
+      "rsi14": 55.3,
+      "trend": "below_both",
+      "mvrvZ": 0.328,
+      "dxy": null,
+      "us10y": null,
+      "m2": null,
+      "etfNet": 21.1,
+      "etfStreak": 0
+    }
+  ]
 }

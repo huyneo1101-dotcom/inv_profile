@@ -1,7 +1,38 @@
 {
-  "generatedAt": null,
-  "note": "Do Action btc-data.yml tu cap nhat (SEC EDGAR). Chi liet ke 8-K gan nhat de nguoi dung tu xem mua/ban.",
+  "generatedAt": "2026-07-15T04:12:23Z",
+  "source": "data.sec.gov",
   "company": "MicroStrategy / Strategy (CIK 1050446)",
-  "latest8K": null,
-  "recent8K": []
+  "note": "Liet ke 8-K gan nhat de nguoi dung tu xem mua/ban.",
+  "latest8K": {
+    "date": "2026-07-13",
+    "form": "8-K",
+    "url": "https://www.sec.gov/Archives/edgar/data/1050446/000119312526301483/0001193125-26-301483-index.htm"
+  },
+  "recent8K": [
+    {
+      "date": "2026-07-13",
+      "form": "8-K",
+      "url": "https://www.sec.gov/Archives/edgar/data/1050446/000119312526301483/0001193125-26-301483-index.htm"
+    },
+    {
+      "date": "2026-07-06",
+      "form": "8-K",
+      "url": "https://www.sec.gov/Archives/edgar/data/1050446/000119312526295586/0001193125-26-295586-index.htm"
+    },
+    {
+      "date": "2026-06-29",
+      "form": "8-K",
+      "url": "https://www.sec.gov/Archives/edgar/data/1050446/000119312526286871/0001193125-26-286871-index.htm"
+    },
+    {
+      "date": "2026-06-22",
+      "form": "8-K",
+      "url": "https://www.sec.gov/Archives/edgar/data/1050446/000119312526276717/0001193125-26-276717-index.htm"
+    },
+    {
+      "date": "2026-06-15",
+      "form": "8-K",
+      "url": "https://www.sec.gov/Archives/edgar/data/1050446/000119312526270366/0001193125-26-270366-index.htm"
+    }
+  ]
 }
