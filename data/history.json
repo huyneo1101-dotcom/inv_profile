@@ -14,6 +14,20 @@
       "m2": null,
       "etfNet": 21.1,
       "etfStreak": 0
+    },
+    {
+      "date": "2026-07-16",
+      "price": 64206.22,
+      "ema50": 65065.64,
+      "ema200": 75579.85,
+      "rsi14": 52.9,
+      "trend": "below_both",
+      "mvrvZ": 0.414,
+      "dxy": null,
+      "us10y": null,
+      "m2": null,
+      "etfNet": 107.7,
+      "etfStreak": 0
     }
   ]
 }
