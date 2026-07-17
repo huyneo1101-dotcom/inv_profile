@@ -1,43 +1,136 @@
 {
+  "generatedAt": "2026-07-17T12:11:29Z",
+  "note": "Backtest core score (EMA/RSI/MVRV/Fear&Greed) + tu hieu chinh nguong bang walk-forward (70% in-sample chon nguong, 30% out-of-sample kiem chung). Loi suat = % thay doi gia sau horizon ngay. Khong gom ETF/Fed/funding/macro.",
   "coverage": {
-    "from": "2026-02-01",
-    "to": "2026-07-15",
-    "days": 365,
+    "from": "2016-02-05",
+    "to": "2026-07-17",
+    "days": 4016,
     "horizonDays": 90,
-    "hasMVRV": true
+    "hasMVRV": true,
+    "hasFNG": true,
+    "trainDays": 2608,
+    "testDays": 1118
   },
-  "tiers": [
-    {
-      "tier": "Thoang",
-      "n90": 11,
-      "avgFwd90": -12.5,
-      "pctNeg90": 100.0,
-      "avgFwd30": -7.0
+  "core": {
+    "cutoffs": {
+      "green_max": 1,
+      "red_min": 3
     },
-    {
+    "validated": false,
+    "inSample": [
+      {
+        "tier": "Thoang",
+        "n": 1689,
+        "avgFwd": 37.6,
+        "pctNeg": 32.3
+      },
+      {
+        "tier": "Can chu y",
+        "n": 919,
+        "avgFwd": 10.4,
+        "pctNeg": 52.7
+      },
+      {
+        "tier": "Rat than trong",
+        "n": 0,
+        "avgFwd": null,
+        "pctNeg": null
+      }
+    ],
+    "outSample": [
+      {
+        "tier": "Thoang",
+        "n": 813,
+        "avgFwd": 10.0,
+        "pctNeg": 42.6
+      },
+      {
+        "tier": "Can chu y",
+        "n": 305,
+        "avgFwd": 13.2,
+        "pctNeg": 41.6
+      },
+      {
+        "tier": "Rat than trong",
+        "n": 0,
+        "avgFwd": null,
+        "pctNeg": null
+      }
+    ],
+    "all": [
+      {
+        "tier": "Thoang",
+        "n": 2502,
+        "avgFwd": 28.6,
+        "pctNeg": 35.6
+      },
+      {
+        "tier": "Can chu y",
+        "n": 1224,
+        "avgFwd": 11.1,
+        "pctNeg": 49.9
+      },
+      {
+        "tier": "Rat than trong",
+        "n": 0,
+        "avgFwd": null,
+        "pctNeg": null
+      }
+    ],
+    "byScore": [
+      {
+        "score": 0,
+        "n": 1296,
+        "avgFwd": 29.0,
+        "pctNeg": 33.1
+      },
+      {
+        "score": 1,
+        "n": 1206,
+        "avgFwd": 28.2,
+        "pctNeg": 38.3
+      },
+      {
+        "score": 2,
+        "n": 1224,
+        "avgFwd": 11.1,
+        "pctNeg": 49.9
+      },
+      {
+        "score": 3,
+        "n": 0,
+        "avgFwd": null,
+        "pctNeg": null
+      },
+      {
+        "score": 4,
+        "n": 0,
+        "avgFwd": null,
+        "pctNeg": null
+      },
+      {
+        "score": 5,
+        "n": 0,
+        "avgFwd": null,
+        "pctNeg": null
+      },
+      {
+        "score": 6,
+        "n": 0,
+        "avgFwd": null,
+        "pctNeg": null
+      }
+    ],
+    "current": {
+      "date": "2026-07-17",
+      "score": 2,
+      "maxScore": 6,
       "tier": "Can chu y",
-      "n90": 64,
-      "avgFwd90": 1.7,
-      "pctNeg90": 53.1,
-      "avgFwd30": 1.8
-    },
-    {
-      "tier": "Rat than trong",
-      "n90": 0,
-      "avgFwd90": null,
-      "pctNeg90": null,
-      "avgFwd30": null
+      "usingOOS": false,
+      "n": 1224,
+      "avgFwd90": 11.1,
+      "pctNeg90": 49.9,
+      "statement": "Core score hien tai = 2/6 -> nhom \"Can chu y\". (toan bo lich su) co 1224 lan tuong tu; sau 90 ngay, 49.9% so lan gia THAP hon (trung binh 11.1%)."
     }
-  ],
-  "current": {
-    "date": "2026-07-15",
-    "subscore": 2,
-    "tier": "Can chu y",
-    "n": 64,
-    "avgFwd90": 1.7,
-    "pctNeg90": 53.1,
-    "statement": "Trang thai hien tai o nhom \"Can chu y\". Trong qua khu co 64 lan tuong tu; sau 90 ngay, 53.1% so lan gia THAP hon (trung binh 1.7%)."
-  },
-  "generatedAt": "2026-07-15T04:09:55Z",
-  "note": "Backtest phan loi bo luat (EMA/RSI/MVRV). Khong gom ETF/Fed/funding/Fear&Greed vi thieu lich su free. Loi suat = % thay doi gia sau horizon ngay."
+  }
 }
