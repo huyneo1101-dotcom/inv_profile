@@ -23,7 +23,7 @@ tuong lai chi de CHAM diem, khong dua vao tinh diem.
 
 Chay: python3 backtest.py [--out data/backtest.json] [--horizon 90]
 """
-import json, sys, os, datetime, urllib.request
+import json, sys, os, datetime, time, urllib.request
 
 def fetch_json(url, timeout=60):
     req = urllib.request.Request(url, headers={"User-Agent": "btc-tin-hieu-backtest", "Accept": "application/json"})
@@ -32,31 +32,28 @@ def fetch_json(url, timeout=60):
 
 # ---------- tai lich su ----------
 def load_prices():
-    """(date, close) tang dan. CryptoCompare histoday (tu ~2017), fallback CoinGecko 365."""
+    """(date, close) tang dan. Coinbase candles (tu ~2015, free khong key), fallback CoinGecko 365."""
     try:
         out = {}
-        to_ts = None
-        for _ in range(4):  # 4 x 2000 ngay = du phu tu 2017
-            url = "https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=2000"
-            if to_ts:
-                url += f"&toTs={to_ts}"
-            j = fetch_json(url)
-            data = (j.get("Data") or {}).get("Data") or []
-            if not data:
+        end = datetime.datetime.utcnow()
+        for _ in range(16):  # 16 x 300 ngay ~ phu tu 2015
+            start = end - datetime.timedelta(days=300)
+            url = ("https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400"
+                   f"&start={start.strftime('%Y-%m-%dT%H:%M:%SZ')}&end={end.strftime('%Y-%m-%dT%H:%M:%SZ')}")
+            arr = fetch_json(url)          # [time, low, high, open, close, volume], moi nhat truoc
+            if not isinstance(arr, list) or not arr:
                 break
-            for d in data:
-                c = d.get("close")
-                if c and c > 0:
-                    out[datetime.datetime.utcfromtimestamp(d["time"]).strftime("%Y-%m-%d")] = float(c)
-            to_ts = data[0]["time"] - 86400
-            if len(data) < 2000:
-                break
+            for c in arr:
+                if isinstance(c, list) and len(c) >= 5 and c[4]:
+                    out[datetime.datetime.utcfromtimestamp(c[0]).strftime("%Y-%m-%d")] = float(c[4])
+            end = start
+            time.sleep(0.35)              # ne rate limit public
         res = sorted(out.items())
         if len(res) >= 400:
-            print(f"Gia: CryptoCompare, {len(res)} ngay ({res[0][0]} -> {res[-1][0]})")
+            print(f"Gia: Coinbase, {len(res)} ngay ({res[0][0]} -> {res[-1][0]})")
             return res
     except Exception as e:
-        print("CryptoCompare loi:", e)
+        print("Coinbase loi:", e)
     # fallback CoinGecko
     try:
         j = fetch_json("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily")
