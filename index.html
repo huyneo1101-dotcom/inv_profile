@@ -210,6 +210,25 @@ function computeScore(s){
   return { score, factors:F, level, color, guide };
 }
 
+/* Core score 0..6 — PHẢI khớp core_score trong backtest.py (dùng cho đèn đã hiệu chỉnh) */
+function liveCoreScore(trend, rsi, mvrv, fngVal){
+  let s = 0;
+  if(trend === 'below_both') s += 2;
+  else if(trend === 'mixed') s += 1;
+  if(rsi != null && rsi >= 70) s += 1;
+  if(mvrv != null){ if(mvrv >= 7) s += 2; else if(mvrv >= 5) s += 1; }
+  if(fngVal != null && fngVal >= 75) s += 1;
+  return s;
+}
+function coreTier(score, cutoffs){
+  if(!cutoffs) return null;
+  if(score <= cutoffs.green_max) return 'Thoang';
+  if(score >= cutoffs.red_min) return 'Rat than trong';
+  return 'Can chu y';
+}
+const TIER_VI = {'Thoang':'Thoáng','Can chu y':'Cần chú ý','Rat than trong':'Rất thận trọng'};
+const TIER_COLOR = {'Thoang':'var(--green)','Can chu y':'var(--yellow)','Rat than trong':'var(--red)'};
+
 function Spark({data}){
   if(!data || data.length < 2) return null;
   const w=600, h=56, pad=3;
@@ -258,7 +277,7 @@ function App(){
   useEffect(()=>{ fetch('./data/macro.json').then(r=>r.json())
     .then(j=>{ if(j && (j.dxy||j.us10y||j.m2)) setMacro(j); }).catch(()=>{}); },[]);
   useEffect(()=>{ fetch('./data/backtest.json').then(r=>r.json())
-    .then(j=>{ if(j && j.current) setBacktest(j); }).catch(()=>{}); },[]);
+    .then(j=>{ if(j && j.core) setBacktest(j); }).catch(()=>{}); },[]);
 
   // giá + EMA + RSI (CoinGecko live, fallback file)
   useEffect(()=>{
@@ -497,28 +516,44 @@ function App(){
         ))}
       </div>
 
-      {/* BACKTEST */}
-      {backtest && backtest.current && <div className="card">
-        <h2>Kiểm chứng lịch sử (backtest)</h2>
-        <div style={{fontSize:'14px',lineHeight:1.6,background:'var(--panel2)',borderRadius:12,padding:'12px 13px'}}>
-          {backtest.current.statement}
-        </div>
-        {backtest.tiers && <div style={{marginTop:12}}>
-          {backtest.tiers.map((t,i)=>(
-            <div className="factor" key={i} style={t.tier===backtest.current.tier?{background:'rgba(247,147,26,.07)',borderRadius:8}:null}>
-              <span className="dot" style={{background:t.tier==='Rat than trong'?'var(--red)':t.tier==='Can chu y'?'var(--yellow)':'var(--green)'}}></span>
-              <div className="ftext">
-                <div className="fl">{t.tier==='Rat than trong'?'Rất thận trọng':t.tier==='Can chu y'?'Cần chú ý':'Thoáng'} {t.tier===backtest.current.tier?'← hiện tại':''}</div>
-                <div className="fd">{t.n90>0?(t.n90+' lần · giá 90 ngày sau: TB '+t.avgFwd90+'% · '+t.pctNeg90+'% số lần giảm'):'chưa đủ dữ liệu'}</div>
+      {/* BACKTEST — đèn đã hiệu chỉnh */}
+      {backtest && backtest.core && (()=>{
+        const core = backtest.core;
+        const cs = liveCoreScore(trend, data?data.rsi:null, mvrv, fng?fng.value:null);
+        const ctier = coreTier(cs, core.cutoffs);
+        const tierArr = core.validated ? core.outSample : core.all;
+        const curStat = tierArr ? tierArr.find(t=>t.tier===ctier) : null;
+        const cov = backtest.coverage || {};
+        return <div className="card">
+          <h2>Đèn đã kiểm chứng (backtest đa năm)</h2>
+          <div style={{fontSize:'14px',lineHeight:1.6,background:'var(--panel2)',borderRadius:12,padding:'12px 13px'}}>
+            <b>Core score hiện tại: {cs}/6 → <span style={{color:ctier?TIER_COLOR[ctier]:'var(--muted)'}}>{ctier?TIER_VI[ctier]:'—'}</span></b><br/>
+            {curStat && curStat.n>0
+              ? <span>Trong lịch sử có <b>{curStat.n}</b> lần ở nhóm này; sau {cov.horizonDays||90} ngày, <b>{curStat.pctNeg}%</b> số lần giá thấp hơn (TB {curStat.avgFwd}%). {core.validated?'(số liệu out-of-sample)':'(toàn bộ lịch sử)'}</span>
+              : <span style={{color:'var(--muted)'}}>Chưa đủ mẫu cho nhóm này.</span>}
+          </div>
+          <div style={{margin:'10px 0 2px'}}>
+            <span className="badge" style={core.validated?{background:'rgba(46,199,122,.18)',color:'#7fe6ab'}:{background:'rgba(242,193,78,.18)',color:'#ffd97a'}}>
+              {core.validated?'✓ ĐÃ KIỂM CHỨNG OOS':'⚠ CHƯA ĐẠT KIỂM CHỨNG'}</span>
+            <span className="hint" style={{marginLeft:8}}>Ngưỡng tự hiệu chỉnh: xanh ≤ {core.cutoffs.green_max} · đỏ ≥ {core.cutoffs.red_min}</span>
+          </div>
+          {tierArr && <div style={{marginTop:8}}>
+            {tierArr.map((t,i)=>(
+              <div className="factor" key={i} style={t.tier===ctier?{background:'rgba(247,147,26,.07)',borderRadius:8}:null}>
+                <span className="dot" style={{background:TIER_COLOR[t.tier]}}></span>
+                <div className="ftext">
+                  <div className="fl">{TIER_VI[t.tier]} {t.tier===ctier?'← hiện tại':''}</div>
+                  <div className="fd">{t.n>0?(t.n+' lần · '+(cov.horizonDays||90)+' ngày sau: TB '+t.avgFwd+'% · '+t.pctNeg+'% số lần giảm'):'chưa đủ dữ liệu'}</div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>}
-        <div className="hint">
-          {backtest.coverage && ('Dữ liệu '+backtest.coverage.from+' → '+backtest.coverage.to+' ('+backtest.coverage.days+' ngày)'+(backtest.coverage.hasMVRV?', có MVRV':', chưa có MVRV')+'. ')}
-          Backtest chỉ dùng tín hiệu tính được từ lịch sử (EMA, RSI, MVRV) — chưa gồm ETF/Fed/funding vì thiếu lịch sử miễn phí. Quá khứ không đảm bảo tương lai.
-        </div>
-      </div>}
+            ))}
+          </div>}
+          <div className="hint" style={{marginTop:10}}>
+            {cov.from && ('Dữ liệu '+cov.from+' → '+cov.to+' ('+cov.days+' ngày'+(cov.hasFNG?', có Fear&Greed':'')+(cov.hasMVRV?', có MVRV':'')+'). ')}
+            Ngưỡng chọn trên {cov.trainDays||'?'} ngày đầu (in-sample), kiểm chứng trên {cov.testDays||'?'} ngày sau (out-of-sample). Core score chỉ gồm EMA/RSI/MVRV/Fear&Greed — không gồm ETF/Fed/funding/macro. Quá khứ không đảm bảo tương lai.
+          </div>
+        </div>;
+      })()}
 
       {/* NHẮC */}
       <div className="card">
