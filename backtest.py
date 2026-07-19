@@ -232,8 +232,11 @@ def main():
         for _, _, r, f, g in rws: b[g].append(f)
         return {k: _stat(v) for k, v in b.items()}
     reg_in, reg_oos, reg_all = reg_stats(rows[:split]), reg_stats(rows[split:]), reg_stats(rows)
+    # Kiem chung bang TAN SUAT giam (pctNeg) — ben hon lay trung binh (it nhay outlier):
+    # regime bull phai it lan giam hon bear tren out-of-sample.
     validated = bool(reg_oos["bull"] and reg_oos["bear"]
-                     and reg_oos["bull"]["avgFwd"] > reg_oos["bear"]["avgFwd"])
+                     and reg_oos["bull"]["n"] >= 40 and reg_oos["bear"]["n"] >= 40
+                     and reg_oos["bull"]["pctNeg"] < reg_oos["bear"]["pctNeg"])
 
     # nhiet ke rui ro dinh gia — decile (boi canh, minh bach quan he thuc te)
     rf = [(r, f) for _, _, r, f, _ in rows]
