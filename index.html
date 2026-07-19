@@ -221,8 +221,8 @@ function pctFromBp(v, bp){
   return 100;
 }
 function liveRisk(core, price, e200, rsi, mvrv, fngVal){
-  if(!core || !core.percentiles) return null;
-  const bp = core.percentiles;
+  if(!core || !core.risk || !core.risk.percentiles) return null;
+  const bp = core.risk.percentiles;
   const raw = { mvrvZ:mvrv, fng:fngVal, rsi:rsi, ext:(price!=null && e200)?(price/e200-1):null };
   const parts = [];
   for(const k of ['mvrvZ','fng','rsi','ext']){
@@ -531,64 +531,64 @@ function App(){
       </div>
 
       {/* RỦI RO ĐỊNH GIÁ — mô hình đã kiểm chứng (backtest đa năm) */}
-      {backtest && backtest.core && backtest.core.percentiles && (()=>{
+      {backtest && backtest.core && backtest.core.model==='regime-primary' && (()=>{
         const core = backtest.core;
+        const rg = core.regime || {};
+        const regime = (data && data.e200!=null && data.price!=null) ? (data.price>data.e200?'bull':'bear') : null;
+        const src = core.validated ? (rg.outSample||{}) : (rg.all||{});
+        const cur = regime ? src[regime] : null;
+        const bAll = (rg.all||{}).bull, beAll = (rg.all||{}).bear;
+        const cov = backtest.coverage || {};
         const lr = liveRisk(core, data?data.price:null, data?data.e200:null, data?data.rsi:null, mvrv, fng?fng.value:null);
         const risk = lr ? lr.risk : null;
-        const ctier = coreTier(risk, core.cutoffs);
-        const regime = (data && data.e200!=null && data.price!=null) ? (data.price>data.e200?'bull':'bear') : null;
-        const tierArr = core.validated ? core.outSample : core.all;
-        const curStat = (tierArr && ctier) ? tierArr.find(t=>t.tier===ctier) : null;
-        const cov = backtest.coverage || {};
-        const riskColor = risk==null?'var(--muted)':(ctier?TIER_COLOR[ctier]:'var(--text)');
+        const rColor = regime==='bull'?'var(--green)':regime==='bear'?'var(--red)':'var(--muted)';
+        const bias = regime==='bull'?'Nghiêng THUẬN LỢI — bull thường tiếp diễn, có thể mua mạnh tay hơn (vẫn chia nhỏ).'
+                    :regime==='bear'?'Nghiêng THẬN TRỌNG — bear hay kéo dài & rủi ro giảm cao, ưu tiên chia nhỏ, giữ tiền mặt.':'';
         return <div className="card">
-          <h2>Rủi ro định giá (mô hình đã kiểm chứng)</h2>
-          {risk!=null ? <div>
-            <div className="price-row">
-              <span className="price" style={{color:riskColor}}>{risk.toFixed(0)}<span style={{fontSize:'16px',color:'var(--muted)'}}>/100</span></span>
-              <span className="chg" style={{color:riskColor,fontWeight:700}}>{ctier?TIER_VI[ctier]:'—'}</span>
-              {regime && <span className="badge" style={{background:regime==='bull'?'rgba(46,199,122,.18)':'rgba(239,83,80,.18)',color:regime==='bull'?'#7fe6ab':'#ff9a97'}}>{regime==='bull'?'REGIME: TĂNG':'REGIME: GIẢM'}</span>}
-            </div>
-            <div className="gauge" style={{marginTop:12}}><i style={{left:Math.max(0,Math.min(100,risk))+'%'}}></i></div>
-            <div className="hint" style={{marginTop:6}}>0 = rẻ/sợ hãi (vùng gom) · 100 = đắt/hưng phấn (rủi ro mua đỉnh cao)</div>
-          </div> : <div className="skel">Đang chờ đủ dữ liệu (MVRV/Fear&Greed/giá)…</div>}
-
-          <div style={{margin:'12px 0 2px'}}>
+          <h2>Regime & xác suất (mô hình đã kiểm chứng)</h2>
+          <div className="price-row">
+            <span className="price" style={{color:rColor}}>{regime==='bull'?'TĂNG (Bull)':regime==='bear'?'GIẢM (Bear)':'—'}</span>
             <span className="badge" style={core.validated?{background:'rgba(46,199,122,.18)',color:'#7fe6ab'}:{background:'rgba(242,193,78,.18)',color:'#ffd97a'}}>
               {core.validated?'✓ ĐÃ KIỂM CHỨNG OOS':'⚠ CHƯA ĐẠT KIỂM CHỨNG'}</span>
-            <span className="hint" style={{marginLeft:8}}>Ngưỡng: xanh ≤ {core.cutoffs.green_max} · đỏ ≥ {core.cutoffs.red_min}</span>
           </div>
-
-          {curStat && curStat.n>0 &&
-            <div style={{fontSize:'14px',lineHeight:1.6,background:'var(--panel2)',borderRadius:12,padding:'12px 13px',marginTop:8}}>
-              Trong lịch sử có <b>{curStat.n}</b> lần rủi ro ở nhóm <b>{TIER_VI[ctier]}</b>; sau {cov.horizonDays||90} ngày, <b>{curStat.pctNeg}%</b> số lần giá thấp hơn (TB {curStat.avgFwd}%). {core.validated?'(out-of-sample)':'(toàn bộ lịch sử)'}
+          <div className="hint" style={{marginTop:4}}>Giá {regime==='bull'?'trên':regime==='bear'?'dưới':'so'} đường trung bình 200 ngày (EMA200). {bias}</div>
+          {cur && cur.n>0 &&
+            <div style={{fontSize:'14px',lineHeight:1.6,background:'var(--panel2)',borderRadius:12,padding:'12px 13px',marginTop:10}}>
+              Lịch sử: {cur.n} lần ở regime này, sau {cov.horizonDays||90} ngày <b>TB {cur.avgFwd>=0?'+':''}{cur.avgFwd}%</b>, <b>{cur.pctNeg}%</b> số lần giá thấp hơn. {core.validated?'(out-of-sample)':'(toàn bộ lịch sử)'}
             </div>}
-
-          {tierArr && <div style={{marginTop:8}}>
-            {tierArr.map((t,i)=>(
-              <div className="factor" key={i} style={t.tier===ctier?{background:'rgba(247,147,26,.07)',borderRadius:8}:null}>
-                <span className="dot" style={{background:TIER_COLOR[t.tier]}}></span>
-                <div className="ftext">
-                  <div className="fl">{TIER_VI[t.tier]} {t.tier===ctier?'← hiện tại':''}</div>
-                  <div className="fd">{t.n>0?(t.n+' lần · '+(cov.horizonDays||90)+' ngày sau: TB '+t.avgFwd+'% · '+t.pctNeg+'% số lần giảm'):'chưa đủ dữ liệu'}</div>
-                </div>
-              </div>
-            ))}
+          {bAll && beAll && <div style={{marginTop:8}}>
+            <div className="factor" style={regime==='bull'?{background:'rgba(46,199,122,.07)',borderRadius:8}:null}>
+              <span className="dot" style={{background:'var(--green)'}}></span>
+              <div className="ftext"><div className="fl">Bull (giá trên EMA200) {regime==='bull'?'← hiện tại':''}</div>
+                <div className="fd">{bAll.n} lần · 90 ngày sau TB +{bAll.avgFwd}% · {bAll.pctNeg}% số lần giảm</div></div>
+            </div>
+            <div className="factor" style={regime==='bear'?{background:'rgba(239,83,80,.07)',borderRadius:8}:null}>
+              <span className="dot" style={{background:'var(--red)'}}></span>
+              <div className="ftext"><div className="fl">Bear (giá dưới EMA200) {regime==='bear'?'← hiện tại':''}</div>
+                <div className="fd">{beAll.n} lần · 90 ngày sau TB +{beAll.avgFwd}% · {beAll.pctNeg}% số lần giảm</div></div>
+            </div>
           </div>}
 
-          {lr && lr.parts.length>0 && <div style={{marginTop:10}}>
-            <div className="hint" style={{marginBottom:4}}>Thành phần (phân vị lịch sử):</div>
-            {lr.parts.map((p,i)=>(
-              <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:'12.5px',padding:'2px 0'}}>
-                <span style={{color:'var(--muted)'}}>{COMP_VI[p.k]||p.k}</span>
-                <span style={{fontWeight:700}}>{p.p.toFixed(0)}<span style={{color:'var(--muted)',fontWeight:400}}>/100</span></span>
-              </div>
-            ))}
+          {risk!=null && <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid var(--line)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+              <b style={{fontSize:'13px'}}>Nhiệt kế định giá</b>
+              <span style={{fontWeight:800,fontSize:'18px'}}>{risk.toFixed(0)}<span style={{fontSize:'13px',color:'var(--muted)'}}>/100</span></span>
+            </div>
+            <div className="gauge" style={{marginTop:8,background:'linear-gradient(90deg,#3a6fb0,#8a94ab,#c8302c)'}}><i style={{left:Math.max(0,Math.min(100,risk))+'%'}}></i></div>
+            {lr && lr.parts.length>0 && <div style={{marginTop:8}}>
+              {lr.parts.map((p,i)=>(
+                <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:'12.5px',padding:'1px 0'}}>
+                  <span style={{color:'var(--muted)'}}>{COMP_VI[p.k]||p.k}</span>
+                  <span style={{fontWeight:700}}>{p.p.toFixed(0)}<span style={{color:'var(--muted)',fontWeight:400}}>/100</span></span>
+                </div>
+              ))}
+            </div>}
+            <div className="hint" style={{marginTop:6}}>0 = rẻ/sợ hãi · 100 = đắt/hưng phấn. ⚠️ Chỉ là bối cảnh: ở khung 90 ngày chỉ số này <b>KHÔNG</b> báo giảm (momentum lấn át) — hữu ích hơn cho khung dài.</div>
           </div>}
 
           <div className="hint" style={{marginTop:10}}>
-            {cov.from && ('Dữ liệu '+cov.from+' → '+cov.to+' ('+cov.days+' ngày). ')}
-            Ngưỡng chọn trên {cov.trainDays||'?'} ngày in-sample, kiểm chứng {cov.testDays||'?'} ngày out-of-sample. Rủi ro định giá = trung bình phân vị của MVRV · Sợ hãi&Tham lam · RSI · độ giãn giá trên EMA200. Regime (tăng/giảm) là bối cảnh riêng. Quá khứ không đảm bảo tương lai.
+            {cov.from && ('Backtest '+cov.from+' → '+cov.to+' ('+cov.days+' ngày). ')}
+            Tín hiệu chính = regime (giá vs EMA200), chọn/kiểm chứng in-sample {cov.trainDays||'?'} / out-of-sample {cov.testDays||'?'} ngày. Quá khứ không đảm bảo tương lai.
           </div>
         </div>;
       })()}

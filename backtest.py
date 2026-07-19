@@ -223,39 +223,27 @@ def main():
     if len(rows) < 200:
         print("Qua it mau."); return 0
 
-    rf = [(r, f) for _, _, r, f, _ in rows]
+    # ===== TIN HIEU CHINH = REGIME (gia vs EMA200). Backtest 10 nam cho thay day la
+    #       tin hieu SACH nhat o khung 90 ngay (bull >> bear). Rui ro dinh gia chi la
+    #       nhiet ke boi canh (o khung nay momentum lan at, khong bao giam). =====
     split = int(len(rows) * 0.7)
-    in_rows = [(r, f) for _, _, r, f, _ in rows[:split]]
-    oos_rows = [(r, f) for _, _, r, f, _ in rows[split:]]
+    def reg_stats(rws):
+        b = {"bull": [], "bear": []}
+        for _, _, r, f, g in rws: b[g].append(f)
+        return {k: _stat(v) for k, v in b.items()}
+    reg_in, reg_oos, reg_all = reg_stats(rows[:split]), reg_stats(rows[split:]), reg_stats(rows)
+    validated = bool(reg_oos["bull"] and reg_oos["bear"]
+                     and reg_oos["bull"]["avgFwd"] > reg_oos["bear"]["avgFwd"])
 
-    cands = list(range(20, 90, 5))
-    cal = calibrate(in_rows, cands)
-    if cal:
-        c1, c2 = cal
-        oos = tiers_stats(oos_rows, c1, c2)
-        validated = bool(oos["Thoang"] and oos["Rat than trong"]
-                         and oos["Thoang"]["avgFwd"] > oos["Rat than trong"]["avgFwd"])
-    else:
-        c1, c2, validated = 40, 65, False
-
-    order = ["Thoang", "Can chu y", "Rat than trong"]
-    def fmt(st): return [{"tier": k, **(st[k] or {"n": 0, "avgFwd": None, "pctNeg": None})} for k in order]
-    in_stats, oos_stats, all_stats = tiers_stats(in_rows, c1, c2), tiers_stats(oos_rows, c1, c2), tiers_stats(rf, c1, c2)
-
-    # bang theo decile risk (minh bach)
+    # nhiet ke rui ro dinh gia — decile (boi canh, minh bach quan he thuc te)
+    rf = [(r, f) for _, _, r, f, _ in rows]
     by_bucket = []
     for lo in range(0, 100, 10):
         st = _stat([f for r, f in rf if lo <= r < lo + 10])
         by_bucket.append({"range": f"{lo}-{lo+10}", "n": st["n"] if st else 0,
                           "avgFwd": st["avgFwd"] if st else None, "pctNeg": st["pctNeg"] if st else None})
 
-    # regime x tier (boi canh)
-    reg_stat = {}
-    for rg in ("bull", "bear"):
-        lst = [f for _, _, r, f, g in rows if g == rg]
-        reg_stat[rg] = _stat(lst)
-
-    # trang thai hien tai (ngay moi nhat) — dung breakpoints (nhu app)
+    # trang thai hien tai
     ti = n - 1
     cur_pcts, cur_comp = [], {}
     for k in comps:
@@ -266,46 +254,43 @@ def main():
         if p is not None: cur_pcts.append(p)
     cur_risk = round(sum(cur_pcts) / len(cur_pcts), 1) if cur_pcts else None
     cur_regime = "bull" if (e200[ti] and vals[ti] > e200[ti]) else "bear"
-    cur_tier = tier_of(cur_risk, c1, c2) if cur_risk is not None else None
-    ref = oos_stats if validated else all_stats
-    cs = ref.get(cur_tier) if cur_tier else None
-    if cs and cs["n"] > 0:
-        stmt = (f"Rui ro dinh gia hien tai = {cur_risk}/100 -> nhom \"{cur_tier}\", regime {cur_regime}. "
+    ref = reg_oos if validated else reg_all
+    rstat = ref.get(cur_regime)
+    b_all, be_all = reg_all.get("bull"), reg_all.get("bear")
+    if rstat and rstat["n"] > 0:
+        stmt = (f"Regime hien tai = {cur_regime} (gia {'tren' if cur_regime=='bull' else 'duoi'} EMA200). "
                 f"{'(out-of-sample) ' if validated else '(toan bo lich su) '}"
-                f"co {cs['n']} lan tuong tu; sau {horizon} ngay, {cs['pctNeg']}% so lan gia THAP hon "
-                f"(TB {cs['avgFwd']}%).")
+                f"sau {horizon} ngay: TB {rstat['avgFwd']}%, {rstat['pctNeg']}% so lan gia THAP hon. "
+                f"[Bull vs Bear toan lich su: {b_all['avgFwd'] if b_all else '?'}% vs {be_all['avgFwd'] if be_all else '?'}%]. "
+                f"Nhiet ke rui ro dinh gia = {cur_risk}/100 (boi canh).")
     else:
-        stmt = f"Rui ro dinh gia = {cur_risk}/100." if cur_risk is not None else "Chua du du lieu."
+        stmt = f"Regime = {cur_regime}. Rui ro dinh gia = {cur_risk}/100."
 
     res = {
         "generatedAt": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "note": ("v3: Chi so RUI RO DINH GIA (MVRV+Fear&Greed+RSI+do gian tren EMA200, theo phan vi "
-                 "lich su, 0..100). Cao=dat/nong. Nguong tu chon in-sample, kiem chung out-of-sample. "
-                 "Regime bull/bear de rieng. App tinh live bang core.percentiles. Qua khu khong dam bao tuong lai."),
+        "note": ("v3.1: Tin hieu CHINH = REGIME (gia vs EMA200) — backtest 10 nam cho thay day la "
+                 "tin hieu sach nhat o khung 90 ngay (bull >> bear). Rui ro dinh gia (MVRV+Fear&Greed+"
+                 "RSI+do gian tren EMA200, phan vi lich su 0..100) chi la NHIET KE boi canh: o khung 90 "
+                 "ngay momentum lan at nen no KHONG bao giam. Qua khu khong dam bao tuong lai."),
         "coverage": {"from": dates[200], "to": dates[-1], "days": n, "horizonDays": horizon,
                      "hasMVRV": len(mvrv) > 0, "hasFNG": len(fng) > 0,
                      "trainDays": split, "testDays": len(rows) - split},
         "core": {
-            "model": "valuation-risk-percentile",
-            "cutoffs": {"green_max": c1, "red_min": c2},
+            "model": "regime-primary",
             "validated": validated,
-            "percentiles": bp,
-            "components": ["mvrvZ", "fng", "rsi", "ext"],
-            "inSample": fmt(in_stats), "outSample": fmt(oos_stats), "all": fmt(all_stats),
-            "byBucket": by_bucket,
-            "regime": {k: (reg_stat[k] or {"n": 0}) for k in reg_stat},
-            "current": {"date": dates[ti], "risk": cur_risk, "tier": cur_tier, "regime": cur_regime,
+            "regime": {"inSample": reg_in, "outSample": reg_oos, "all": reg_all},
+            "risk": {"percentiles": bp, "byBucket": by_bucket,
+                     "components": ["mvrvZ", "fng", "rsi", "ext"]},
+            "current": {"date": dates[ti], "regime": cur_regime, "risk": cur_risk,
                         "usingOOS": validated, "components": cur_comp,
-                        **({"n": cs["n"], "avgFwd90": cs["avgFwd"], "pctNeg90": cs["pctNeg"]} if cs else {}),
-                        "statement": stmt},
+                        "regimeStat": rstat or {"n": 0}, "statement": stmt},
         },
     }
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     json.dump(res, open(out_path, "w"), ensure_ascii=False, indent=2)
     print("Da ghi", out_path)
-    print(f"Nguong risk: xanh<= {c1}, do>= {c2} | validated={validated}")
-    print("OOS:", json.dumps(fmt(oos_stats), ensure_ascii=False))
-    print("Decile:", json.dumps(by_bucket, ensure_ascii=False))
+    print(f"Regime validated={validated} | bull={reg_all.get('bull')} bear={reg_all.get('bear')}")
+    print("Decile risk:", json.dumps(by_bucket, ensure_ascii=False))
     print(stmt)
     return 0
 
