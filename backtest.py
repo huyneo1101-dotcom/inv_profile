@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Backtest + HIEU CHINH NGUONG cho BTC Tin Hieu (v2).
+Backtest + hieu chinh cho BTC Tin Hieu (v3 — THIET KE LAI LOI).
 
-Khac v1:
-- Lich su SAU (nhieu nam) tu CryptoCompare (khong bi chan geo nhu Binance tren runner US;
-  CoinGecko free chi cho 365 ngay). Fallback CoinGecko neu loi.
-- Them Fear&Greed lich su (alternative.me, tu 2018) vao "core score".
-- TU HIEU CHINH nguong den bang walk-forward: chia 70% in-sample de chon nguong,
-  30% out-of-sample de KIEM CHUNG (chong overfit). Chi coi la "validated" khi OOS
-  van giu thu tu do<vang<xanh ve loi suat tuong lai.
+Bai hoc tu v2: cong don cac tin hieu MAU THUAN (xu huong giam vs euphoria dinh)
+khong tao thang rui ro don dieu — score kep 0..2, khong validate duoc.
 
-"Core score" (cac tin hieu TINH DUOC TU LICH SU FREE, dung CHUNG voi app):
-  - Gia duoi ca EMA50&EMA200: +2 ; nam giua: +1
-  - RSI(14) >= 70: +1
-  - MVRV Z >= 7: +2 ; >= 5: +1
-  - Fear&Greed >= 75 (tham lam tot do): +1
-  => range 0..6. App tinh y het core score nay live va map qua nguong da hieu chinh.
+v3: CHI SO RUI RO DINH GIA (Valuation Risk 0..100) — gop cac thu CUNG do do "nong/dat":
+  - MVRV Z-score (cao = dat)
+  - Fear&Greed (cao = tham lam)
+  - RSI(14) (cao = qua mua)
+  - Do gian gia tren EMA200: price/ema200 - 1 (cao = keo xa trung binh)
+Moi thanh phan quy ve PHAN VI LICH SU (0..100) roi lay trung binh -> risk 0..100.
+Cao = dat/nong (rui ro mua dinh cao); Thap = re/so hai (vung gom).
 
-CHONG LOOKAHEAD: EMA/RSI tinh bang mang tien tinh (chi dung du lieu <= t). Loi suat
-tuong lai chi de CHAM diem, khong dua vao tinh diem.
+Regime (bull/bear) = gia vs EMA200 — de RIENG lam boi canh, khong tron vao risk.
+
+CHONG LOOKAHEAD: percentile tinh kieu EXPANDING (chi dung gia tri <= t) khi backtest.
+Nguong tu chon 70% in-sample, kiem chung 30% out-of-sample.
+App tinh risk LIVE bang bang breakpoint percentile (core.percentiles) do file nay xuat.
 
 Chay: python3 backtest.py [--out data/backtest.json] [--horizon 90]
 """
-import json, sys, os, datetime, time, urllib.request
+import json, sys, os, datetime, time, bisect, urllib.request
 
 def fetch_json(url, timeout=60):
     req = urllib.request.Request(url, headers={"User-Agent": "btc-tin-hieu-backtest", "Accept": "application/json"})
@@ -36,25 +35,24 @@ def load_prices():
     try:
         out = {}
         end = datetime.datetime.utcnow()
-        for _ in range(16):  # 16 x 300 ngay ~ phu tu 2015
+        for _ in range(16):
             start = end - datetime.timedelta(days=300)
             url = ("https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400"
                    f"&start={start.strftime('%Y-%m-%dT%H:%M:%SZ')}&end={end.strftime('%Y-%m-%dT%H:%M:%SZ')}")
-            arr = fetch_json(url)          # [time, low, high, open, close, volume], moi nhat truoc
+            arr = fetch_json(url)
             if not isinstance(arr, list) or not arr:
                 break
             for c in arr:
                 if isinstance(c, list) and len(c) >= 5 and c[4]:
                     out[datetime.datetime.utcfromtimestamp(c[0]).strftime("%Y-%m-%d")] = float(c[4])
             end = start
-            time.sleep(0.35)              # ne rate limit public
+            time.sleep(0.35)
         res = sorted(out.items())
         if len(res) >= 400:
             print(f"Gia: Coinbase, {len(res)} ngay ({res[0][0]} -> {res[-1][0]})")
             return res
     except Exception as e:
         print("Coinbase loi:", e)
-    # fallback CoinGecko
     try:
         j = fetch_json("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily")
         dd = {}
@@ -72,7 +70,7 @@ def load_mvrv():
     try:
         j = fetch_json("https://bitcoin-data.com/v1/mvrv-zscore")
     except Exception as e:
-        print("MVRV history loi:", e); return {}
+        print("MVRV loi:", e); return {}
     out = {}
     if isinstance(j, list):
         for o in j:
@@ -80,13 +78,11 @@ def load_mvrv():
             date = z = None
             for k, v in o.items():
                 lk = k.lower()
-                if date is None and ("date" in lk or lk == "d" or "time" in lk):
-                    date = str(v)[:10]
+                if date is None and ("date" in lk or lk == "d" or "time" in lk): date = str(v)[:10]
                 if z is None and ("mvrv" in lk or "zscore" in lk or "z-score" in lk):
                     try: z = float(v)
                     except: pass
-            if date and z is not None:
-                out[date] = z
+            if date and z is not None: out[date] = z
     print(f"MVRV: {len(out)} ngay")
     return out
 
@@ -94,23 +90,19 @@ def load_fng():
     try:
         j = fetch_json("https://api.alternative.me/fng/?limit=0&format=json")
     except Exception as e:
-        print("Fear&Greed history loi:", e); return {}
+        print("Fear&Greed loi:", e); return {}
     out = {}
     for d in j.get("data", []):
-        try:
-            ts = int(d["timestamp"])
-            out[datetime.datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d")] = int(d["value"])
+        try: out[datetime.datetime.utcfromtimestamp(int(d["timestamp"])).strftime("%Y-%m-%d")] = int(d["value"])
         except: pass
     print(f"Fear&Greed: {len(out)} ngay")
     return out
 
-# ---------- chi bao (mang tien tinh, O(n)) ----------
+# ---------- chi bao ----------
 def ema_series(vals, period):
     out = [None] * len(vals)
     if len(vals) < period: return out
-    k = 2 / (period + 1)
-    e = sum(vals[:period]) / period
-    out[period - 1] = e
+    k = 2 / (period + 1); e = sum(vals[:period]) / period; out[period - 1] = e
     for i in range(period, len(vals)):
         e = vals[i] * k + e * (1 - k); out[i] = e
     return out
@@ -132,49 +124,51 @@ def rsi_series(vals, period=14):
         out[i] = 100.0 if al == 0 else 100 - 100 / (1 + ag / al)
     return out
 
-def core_score(price, e50, e200, rsi, mvrvz, fng):
-    """Core score 0..6 — dung CHUNG voi app (sua o day thi sua o app cho dong bo)."""
-    s = 0
-    if e50 is not None and e200 is not None:
-        if price < e50 and price < e200: s += 2
-        elif not (price > e50 and price > e200): s += 1
-    if rsi is not None and rsi >= 70: s += 1
-    if mvrvz is not None:
-        if mvrvz >= 7: s += 2
-        elif mvrvz >= 5: s += 1
-    if fng is not None and fng >= 75: s += 1
-    return s
+def breakpoints(values, n=101):
+    """101 moc percentile (0..100) tu day du lieu — de app map gia tri live -> percentile."""
+    s = sorted(values)
+    if not s: return None
+    m = len(s)
+    return [round(s[min(m - 1, int(round(p / 100 * (m - 1))))], 6) for p in range(n)]
+
+def pct_from_bp(v, bp):
+    """Map v -> percentile 0..100 dua tren breakpoints (noi suy tuyen tinh)."""
+    if bp is None or v is None: return None
+    if v <= bp[0]: return 0.0
+    if v >= bp[-1]: return 100.0
+    for k in range(len(bp) - 1):
+        if v < bp[k + 1]:
+            span = bp[k + 1] - bp[k]
+            return k + ((v - bp[k]) / span if span else 0)
+    return 100.0
 
 # ---------- thong ke ----------
 def _stat(lst):
     if not lst: return None
-    avg = sum(lst) / len(lst)
-    neg = sum(1 for x in lst if x < 0) / len(lst)
-    return {"n": len(lst), "avgFwd": round(avg * 100, 1), "pctNeg": round(neg * 100, 1)}
+    return {"n": len(lst), "avgFwd": round(sum(lst) / len(lst) * 100, 1),
+            "pctNeg": round(sum(1 for x in lst if x < 0) / len(lst) * 100, 1)}
 
-def tier_of(score, c1, c2):
-    return "Thoang" if score <= c1 else "Rat than trong" if score >= c2 else "Can chu y"
+def tier_of(risk, c1, c2):
+    return "Thoang" if risk <= c1 else "Rat than trong" if risk >= c2 else "Can chu y"
 
 def tiers_stats(rows, c1, c2):
-    """rows: list (score, fwd). Tra dict tier -> stat."""
     b = {"Thoang": [], "Can chu y": [], "Rat than trong": []}
-    for s, f in rows:
-        b[tier_of(s, c1, c2)].append(f)
+    for r, f in rows: b[tier_of(r, c1, c2)].append(f)
     return {k: _stat(v) for k, v in b.items()}
 
-def calibrate(rows_in, min_n=30):
-    """Chon (c1,c2) tren in-sample: don dieu do<vang<xanh + toi da (xanh_avg - do_avg)."""
+def calibrate(rows_in, cands, min_n=40):
+    """Chon (c1,c2) tren in-sample: don dieu Thoang>CanChuY>RatThanTrong ve loi suat, toi da spread."""
     best = None
-    for c1 in range(0, 6):
-        for c2 in range(c1 + 1, 7):
+    for c1 in cands:
+        for c2 in cands:
+            if c2 <= c1: continue
             st = tiers_stats(rows_in, c1, c2)
             g, y, r = st["Thoang"], st["Can chu y"], st["Rat than trong"]
             if not (g and y and r): continue
             if min(g["n"], y["n"], r["n"]) < min_n: continue
             if not (g["avgFwd"] > y["avgFwd"] > r["avgFwd"]): continue
             spread = g["avgFwd"] - r["avgFwd"]
-            if best is None or spread > best[0]:
-                best = (spread, c1, c2)
+            if best is None or spread > best[0]: best = (spread, c1, c2)
     return (best[1], best[2]) if best else None
 
 def main():
@@ -188,78 +182,120 @@ def main():
     if not prices or len(prices) < 300:
         print("Khong du gia — bo qua."); return 0
     mvrv, fng = load_mvrv(), load_fng()
-    dates = [d for d, _ in prices]
-    vals = [p for _, p in prices]
-    e50, e200, rsi = ema_series(vals, 50), ema_series(vals, 200), rsi_series(vals, 14)
-
-    rows = []  # (idx, date, score, fwd90)
+    dates = [d for d, _ in prices]; vals = [p for _, p in prices]
     n = len(vals)
+    rsi = rsi_series(vals, 14); e200 = ema_series(vals, 200)
+
+    # thanh phan tho moi ngay
+    comps = {"mvrvZ": [None] * n, "fng": [None] * n, "rsi": [None] * n, "ext": [None] * n}
+    for t in range(n):
+        comps["mvrvZ"][t] = mvrv.get(dates[t])
+        comps["fng"][t] = fng.get(dates[t])
+        comps["rsi"][t] = rsi[t]
+        comps["ext"][t] = (vals[t] / e200[t] - 1) if e200[t] else None
+
+    # breakpoints tu toan bo lich su (de app map live)
+    bp = {k: breakpoints([x for x in comps[k] if x is not None]) for k in comps}
+
+    # risk EXPANDING percentile (chong lookahead) cho backtest
+    sorted_hist = {k: [] for k in comps}
+    risk = [None] * n
+    for t in range(n):
+        pcts = []
+        for k in comps:
+            v = comps[k][t]
+            if v is None: continue
+            arr = sorted_hist[k]
+            if len(arr) >= 30:  # can it nhat 30 diem lich su de percentile co nghia
+                pos = bisect.bisect_left(arr, v)
+                pcts.append(pos / len(arr) * 100)
+            bisect.insort(arr, v)
+        if pcts:
+            risk[t] = sum(pcts) / len(pcts)
+
+    # rows (risk, fwd90) + regime
+    rows = []
     for t in range(200, n - horizon):
-        s = core_score(vals[t], e50[t], e200[t], rsi[t], mvrv.get(dates[t]), fng.get(dates[t]))
+        if risk[t] is None: continue
         fwd = (vals[t + horizon] - vals[t]) / vals[t]
-        rows.append((t, dates[t], s, fwd))
+        regime = "bull" if (e200[t] and vals[t] > e200[t]) else "bear"
+        rows.append((t, dates[t], risk[t], fwd, regime))
     if len(rows) < 200:
-        print("Qua it mau sau khi tru horizon."); return 0
+        print("Qua it mau."); return 0
 
-    sf = [(s, f) for _, _, s, f in rows]
+    rf = [(r, f) for _, _, r, f, _ in rows]
     split = int(len(rows) * 0.7)
-    in_rows = [(s, f) for _, _, s, f in rows[:split]]
-    oos_rows = [(s, f) for _, _, s, f in rows[split:]]
+    in_rows = [(r, f) for _, _, r, f, _ in rows[:split]]
+    oos_rows = [(r, f) for _, _, r, f, _ in rows[split:]]
 
-    cal = calibrate(in_rows)
-    validated = False
+    cands = list(range(20, 90, 5))
+    cal = calibrate(in_rows, cands)
     if cal:
         c1, c2 = cal
         oos = tiers_stats(oos_rows, c1, c2)
-        g, r = oos["Thoang"], oos["Rat than trong"]
-        validated = bool(g and r and g["avgFwd"] > r["avgFwd"])
+        validated = bool(oos["Thoang"] and oos["Rat than trong"]
+                         and oos["Thoang"]["avgFwd"] > oos["Rat than trong"]["avgFwd"])
     else:
-        c1, c2 = 1, 3   # mac dinh neu khong tim duoc nguong don dieu
+        c1, c2, validated = 40, 65, False
 
-    def fmt_tiers(st):
-        order = ["Thoang", "Can chu y", "Rat than trong"]
-        return [{"tier": k, **(st[k] or {"n": 0, "avgFwd": None, "pctNeg": None})} for k in order]
+    order = ["Thoang", "Can chu y", "Rat than trong"]
+    def fmt(st): return [{"tier": k, **(st[k] or {"n": 0, "avgFwd": None, "pctNeg": None})} for k in order]
+    in_stats, oos_stats, all_stats = tiers_stats(in_rows, c1, c2), tiers_stats(oos_rows, c1, c2), tiers_stats(rf, c1, c2)
 
-    in_stats = tiers_stats(in_rows, c1, c2)
-    oos_stats = tiers_stats(oos_rows, c1, c2)
-    all_stats = tiers_stats(sf, c1, c2)
+    # bang theo decile risk (minh bach)
+    by_bucket = []
+    for lo in range(0, 100, 10):
+        st = _stat([f for r, f in rf if lo <= r < lo + 10])
+        by_bucket.append({"range": f"{lo}-{lo+10}", "n": st["n"] if st else 0,
+                          "avgFwd": st["avgFwd"] if st else None, "pctNeg": st["pctNeg"] if st else None})
 
-    by_score = []
-    for sv in range(0, 7):
-        st = _stat([f for s, f in sf if s == sv])
-        by_score.append({"score": sv, "n": st["n"] if st else 0,
-                         "avgFwd": st["avgFwd"] if st else None, "pctNeg": st["pctNeg"] if st else None})
+    # regime x tier (boi canh)
+    reg_stat = {}
+    for rg in ("bull", "bear"):
+        lst = [f for _, _, r, f, g in rows if g == rg]
+        reg_stat[rg] = _stat(lst)
 
+    # trang thai hien tai (ngay moi nhat) — dung breakpoints (nhu app)
     ti = n - 1
-    cur_score = core_score(vals[ti], e50[ti], e200[ti], rsi[ti], mvrv.get(dates[ti]), fng.get(dates[ti]))
-    cur_tier = tier_of(cur_score, c1, c2)
+    cur_pcts, cur_comp = [], {}
+    for k in comps:
+        v = comps[k][ti]
+        p = pct_from_bp(v, bp[k]) if v is not None else None
+        cur_comp[k] = {"value": round(v, 3) if v is not None else None,
+                       "pct": round(p, 1) if p is not None else None}
+        if p is not None: cur_pcts.append(p)
+    cur_risk = round(sum(cur_pcts) / len(cur_pcts), 1) if cur_pcts else None
+    cur_regime = "bull" if (e200[ti] and vals[ti] > e200[ti]) else "bear"
+    cur_tier = tier_of(cur_risk, c1, c2) if cur_risk is not None else None
     ref = oos_stats if validated else all_stats
-    cs = ref.get(cur_tier)
-    if cs:
-        stmt = (f"Core score hien tai = {cur_score}/6 -> nhom \"{cur_tier}\". "
-                f"{'(kiem chung out-of-sample) ' if validated else '(toan bo lich su) '}"
+    cs = ref.get(cur_tier) if cur_tier else None
+    if cs and cs["n"] > 0:
+        stmt = (f"Rui ro dinh gia hien tai = {cur_risk}/100 -> nhom \"{cur_tier}\", regime {cur_regime}. "
+                f"{'(out-of-sample) ' if validated else '(toan bo lich su) '}"
                 f"co {cs['n']} lan tuong tu; sau {horizon} ngay, {cs['pctNeg']}% so lan gia THAP hon "
-                f"(trung binh {cs['avgFwd']}%).")
+                f"(TB {cs['avgFwd']}%).")
     else:
-        stmt = f"Core score hien tai = {cur_score}/6, chua du mau nhom \"{cur_tier}\"."
+        stmt = f"Rui ro dinh gia = {cur_risk}/100." if cur_risk is not None else "Chua du du lieu."
 
     res = {
         "generatedAt": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "note": ("Backtest core score (EMA/RSI/MVRV/Fear&Greed) + tu hieu chinh nguong bang "
-                 "walk-forward (70% in-sample chon nguong, 30% out-of-sample kiem chung). "
-                 "Loi suat = % thay doi gia sau horizon ngay. Khong gom ETF/Fed/funding/macro."),
+        "note": ("v3: Chi so RUI RO DINH GIA (MVRV+Fear&Greed+RSI+do gian tren EMA200, theo phan vi "
+                 "lich su, 0..100). Cao=dat/nong. Nguong tu chon in-sample, kiem chung out-of-sample. "
+                 "Regime bull/bear de rieng. App tinh live bang core.percentiles. Qua khu khong dam bao tuong lai."),
         "coverage": {"from": dates[200], "to": dates[-1], "days": n, "horizonDays": horizon,
                      "hasMVRV": len(mvrv) > 0, "hasFNG": len(fng) > 0,
                      "trainDays": split, "testDays": len(rows) - split},
         "core": {
+            "model": "valuation-risk-percentile",
             "cutoffs": {"green_max": c1, "red_min": c2},
             "validated": validated,
-            "inSample": fmt_tiers(in_stats),
-            "outSample": fmt_tiers(oos_stats),
-            "all": fmt_tiers(all_stats),
-            "byScore": by_score,
-            "current": {"date": dates[ti], "score": cur_score, "maxScore": 6,
-                        "tier": cur_tier, "usingOOS": validated,
+            "percentiles": bp,
+            "components": ["mvrvZ", "fng", "rsi", "ext"],
+            "inSample": fmt(in_stats), "outSample": fmt(oos_stats), "all": fmt(all_stats),
+            "byBucket": by_bucket,
+            "regime": {k: (reg_stat[k] or {"n": 0}) for k in reg_stat},
+            "current": {"date": dates[ti], "risk": cur_risk, "tier": cur_tier, "regime": cur_regime,
+                        "usingOOS": validated, "components": cur_comp,
                         **({"n": cs["n"], "avgFwd90": cs["avgFwd"], "pctNeg90": cs["pctNeg"]} if cs else {}),
                         "statement": stmt},
         },
@@ -267,8 +303,9 @@ def main():
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     json.dump(res, open(out_path, "w"), ensure_ascii=False, indent=2)
     print("Da ghi", out_path)
-    print(f"Nguong: xanh<= {c1}, do>= {c2} | validated={validated}")
-    print("OOS tiers:", json.dumps(fmt_tiers(oos_stats), ensure_ascii=False))
+    print(f"Nguong risk: xanh<= {c1}, do>= {c2} | validated={validated}")
+    print("OOS:", json.dumps(fmt(oos_stats), ensure_ascii=False))
+    print("Decile:", json.dumps(by_bucket, ensure_ascii=False))
     print(stmt)
     return 0
 
