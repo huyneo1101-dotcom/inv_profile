@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-19T08:42:51Z",
+  "generatedAt": "2026-07-19T08:44:09Z",
   "note": "v3.1: Tin hieu CHINH = REGIME (gia vs EMA200) — backtest 10 nam cho thay day la tin hieu sach nhat o khung 90 ngay (bull >> bear). Rui ro dinh gia (MVRV+Fear&Greed+RSI+do gian tren EMA200, phan vi lich su 0..100) chi la NHIET KE boi canh: o khung 90 ngay momentum lan at nen no KHONG bao giam. Qua khu khong dam bao tuong lai.",
   "coverage": {
     "from": "2016-02-05",
@@ -13,7 +13,7 @@
   },
   "core": {
     "model": "regime-primary",
-    "validated": false,
+    "validated": true,
     "regime": {
       "inSample": {
         "bull": {
@@ -540,7 +540,7 @@
       "date": "2026-07-19",
       "regime": "bear",
       "risk": 35.6,
-      "usingOOS": false,
+      "usingOOS": true,
       "components": {
         "mvrvZ": {
           "value": null,
@@ -551,7 +551,7 @@
           "pct": 30.0
         },
         "rsi": {
-          "value": 54.359,
+          "value": 54.368,
           "pct": 56.3
         },
         "ext": {
@@ -560,11 +560,11 @@
         }
       },
       "regimeStat": {
-        "n": 1271,
-        "avgFwd": 8.1,
-        "pctNeg": 53.7
+        "n": 292,
+        "avgFwd": 11.2,
+        "pctNeg": 49.0
       },
-      "statement": "Regime hien tai = bear (gia duoi EMA200). (toan bo lich su) sau 90 ngay: TB 8.1%, 53.7% so lan gia THAP hon. [Bull vs Bear toan lich su: 30.5% vs 8.1%]. Nhiet ke rui ro dinh gia = 35.6/100 (boi canh)."
+      "statement": "Regime hien tai = bear (gia duoi EMA200). (out-of-sample) sau 90 ngay: TB 11.2%, 49.0% so lan gia THAP hon. [Bull vs Bear toan lich su: 30.5% vs 8.1%]. Nhiet ke rui ro dinh gia = 35.6/100 (boi canh)."
     }
   }
 }
