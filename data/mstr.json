@@ -1,14 +1,19 @@
 {
-  "generatedAt": "2026-07-30T03:39:20Z",
+  "generatedAt": "2026-07-31T03:58:13Z",
   "source": "data.sec.gov",
   "company": "MicroStrategy / Strategy (CIK 1050446)",
   "note": "Liet ke 8-K gan nhat de nguoi dung tu xem mua/ban.",
   "latest8K": {
-    "date": "2026-07-27",
+    "date": "2026-07-30",
     "form": "8-K",
-    "url": "https://www.sec.gov/Archives/edgar/data/1050446/000119312526316917/0001193125-26-316917-index.htm"
+    "url": "https://www.sec.gov/Archives/edgar/data/1050446/000162828026051027/0001628280-26-051027-index.htm"
   },
   "recent8K": [
+    {
+      "date": "2026-07-30",
+      "form": "8-K",
+      "url": "https://www.sec.gov/Archives/edgar/data/1050446/000162828026051027/0001628280-26-051027-index.htm"
+    },
     {
       "date": "2026-07-27",
       "form": "8-K",
@@ -28,11 +33,6 @@
       "date": "2026-07-06",
       "form": "8-K",
       "url": "https://www.sec.gov/Archives/edgar/data/1050446/000119312526295586/0001193125-26-295586-index.htm"
-    },
-    {
-      "date": "2026-06-29",
-      "form": "8-K",
-      "url": "https://www.sec.gov/Archives/edgar/data/1050446/000119312526286871/0001193125-26-286871-index.htm"
     }
   ]
 }
