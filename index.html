@@ -593,6 +593,39 @@ function App(){
         </div>;
       })()}
 
+      {/* ĐỊNH GIÁ DÀI HẠN (~1 năm) — MVRV */}
+      {backtest && backtest.core && backtest.core.longterm && backtest.core.longterm.current && (()=>{
+        const lt = backtest.core.longterm;
+        const cur = lt.current;
+        const tcolor = cur.tier ? TIER_COLOR[cur.tier] : 'var(--muted)';
+        const tierBuy = {'Thoang':'RẺ — vùng gom','Can chu y':'Trung tính','Rat than trong':'ĐẮT — thận trọng'};
+        const arr = lt.validated ? lt.outSample : lt.all;
+        return <div className="card">
+          <h2>Định giá dài hạn ~1 năm (MVRV)</h2>
+          <div className="price-row">
+            <span className="price" style={{color:tcolor}}>{cur.pct!=null?Math.round(cur.pct):'—'}<span style={{fontSize:'16px',color:'var(--muted)'}}>/100</span></span>
+            <span className="chg" style={{color:tcolor,fontWeight:700}}>{cur.tier?tierBuy[cur.tier]:'—'}</span>
+            <span className="badge" style={lt.validated?{background:'rgba(46,199,122,.18)',color:'#7fe6ab'}:{background:'rgba(242,193,78,.18)',color:'#ffd97a'}}>
+              {lt.validated?'✓ ĐÃ KIỂM CHỨNG OOS':'⚠ CHƯA ĐẠT KIỂM CHỨNG'}</span>
+          </div>
+          <div className="gauge" style={{marginTop:12,background:'linear-gradient(90deg,var(--green),var(--yellow),var(--red))'}}><i style={{left:Math.max(0,Math.min(100,cur.pct||0))+'%'}}></i></div>
+          <div className="hint" style={{marginTop:6}}>MVRV hiện tại {cur.mvrv} (phân vị {cur.pct!=null?Math.round(cur.pct):'—'}/100). 0 = rẻ (gom) · 100 = đắt (đỉnh chu kỳ).</div>
+          {cur.n>0 && <div style={{fontSize:'14px',lineHeight:1.6,background:'var(--panel2)',borderRadius:12,padding:'12px 13px',marginTop:10}}>
+            Lịch sử: {cur.n} lần định giá tương tự, <b>1 năm sau TB {cur.avgFwd>=0?'+':''}{cur.avgFwd}%</b>, {cur.pctNeg}% số lần giá thấp hơn. {lt.validated?'(out-of-sample)':'(toàn bộ lịch sử)'}
+          </div>}
+          {arr && <div style={{marginTop:8}}>
+            {arr.map((t,i)=>(
+              <div className="factor" key={i} style={t.tier===cur.tier?{background:'rgba(247,147,26,.07)',borderRadius:8}:null}>
+                <span className="dot" style={{background:TIER_COLOR[t.tier]}}></span>
+                <div className="ftext"><div className="fl">{tierBuy[t.tier]} {t.tier===cur.tier?'← hiện tại':''}</div>
+                  <div className="fd">{t.n>0?(t.n+' lần · 1 năm sau TB '+(t.avgFwd>=0?'+':'')+t.avgFwd+'% · '+t.pctNeg+'% số lần giảm'):'chưa đủ dữ liệu'}</div></div>
+              </div>
+            ))}
+          </div>}
+          <div className="hint" style={{marginTop:10}}>MVRV = giá / giá vốn trung bình toàn mạng (Coin Metrics, lịch sử sâu). Đây là khung <b>1 năm</b> — bổ trợ cho regime (90 ngày) ở trên. Quá khứ không đảm bảo tương lai.</div>
+        </div>;
+      })()}
+
       {/* NHẮC */}
       <div className="card">
         <h2>Nhắc nhở</h2>

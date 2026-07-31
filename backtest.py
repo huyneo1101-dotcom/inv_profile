@@ -86,6 +86,24 @@ def load_mvrv():
     print(f"MVRV: {len(out)} ngay")
     return out
 
+def load_cm_mvrv():
+    """MVRV ratio tu Coin Metrics Community API (free, khong key, lich su sau tu ~2010)."""
+    out = {}
+    try:
+        url = ("https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
+               "?assets=btc&metrics=CapMVRVCur&frequency=1d&page_size=10000")
+        j = fetch_json(url)
+        for row in j.get("data", []):
+            t = row.get("time", "")[:10]
+            v = row.get("CapMVRVCur")
+            if t and v is not None:
+                try: out[t] = float(v)
+                except: pass
+    except Exception as e:
+        print("Coin Metrics MVRV loi:", e)
+    print(f"CM MVRV: {len(out)} ngay")
+    return out
+
 def load_fng():
     try:
         j = fetch_json("https://api.alternative.me/fng/?limit=0&format=json")
@@ -171,6 +189,66 @@ def calibrate(rows_in, cands, min_n=40):
             if best is None or spread > best[0]: best = (spread, c1, c2)
     return (best[1], best[2]) if best else None
 
+def longterm_analysis(dates, vals, cm_mvrv, horizon=365, min_n=40):
+    """Khung DAI HAN: dinh gia theo MVRV (percentile lich su) -> loi suat ~1 nam.
+    Ky vong: MVRV thap (re) -> loi suat 1 nam CAO; MVRV cao (dat) -> THAP (don dieu giam)."""
+    n = len(vals)
+    mv = [cm_mvrv.get(d) for d in dates]
+    if sum(1 for x in mv if x is not None) < 500:
+        return None
+    # expanding percentile (chong lookahead) + breakpoints toan bo (cho current)
+    hist = []; pct = [None] * n
+    for t in range(n):
+        v = mv[t]
+        if v is not None:
+            if len(hist) >= 60:
+                pct[t] = bisect.bisect_left(hist, v) / len(hist) * 100
+            bisect.insort(hist, v)
+    bp = breakpoints([v for v in mv if v is not None])
+    rows = []
+    for t in range(200, n - horizon):
+        if pct[t] is None: continue
+        rows.append((pct[t], (vals[t + horizon] - vals[t]) / vals[t]))
+    if len(rows) < 200: return None
+    split = int(len(rows) * 0.7)
+    in_rows, oos_rows = rows[:split], rows[split:]
+    cands = list(range(20, 90, 5))
+    cal = calibrate(in_rows, cands, min_n=min_n)
+    if cal:
+        c1, c2 = cal
+        oos = tiers_stats(oos_rows, c1, c2)
+        validated = bool(oos["Thoang"] and oos["Rat than trong"]
+                         and oos["Thoang"]["avgFwd"] > oos["Rat than trong"]["avgFwd"])
+    else:
+        c1, c2, validated = 33, 66, False
+    order = ["Thoang", "Can chu y", "Rat than trong"]
+    def fmt(st): return [{"tier": k, **(st[k] or {"n": 0, "avgFwd": None, "pctNeg": None})} for k in order]
+    in_s, oos_s, all_s = tiers_stats(in_rows, c1, c2), tiers_stats(oos_rows, c1, c2), tiers_stats(rows, c1, c2)
+    by_bucket = []
+    for lo in range(0, 100, 20):
+        st = _stat([f for r, f in rows if lo <= r < lo + 20])
+        by_bucket.append({"range": f"{lo}-{lo+20}", "n": st["n"] if st else 0,
+                          "avgFwd": st["avgFwd"] if st else None, "pctNeg": st["pctNeg"] if st else None})
+    # current: ngay moi nhat co MVRV
+    ti = max(i for i in range(n) if mv[i] is not None)
+    cur_mv = mv[ti]; cur_pct = pct_from_bp(cur_mv, bp)
+    cur_tier = tier_of(cur_pct, c1, c2)
+    ref = oos_s if validated else all_s
+    cs = ref.get(cur_tier)
+    if cs and cs["n"] > 0:
+        stmt = (f"MVRV hien tai = {round(cur_mv,2)} (phan vi {round(cur_pct)}/100) -> \"{cur_tier}\". "
+                f"{'(out-of-sample) ' if validated else '(toan bo lich su) '}"
+                f"{cs['n']} lan tuong tu, sau 1 nam TB {cs['avgFwd']}%, {cs['pctNeg']}% so lan giam.")
+    else:
+        stmt = f"MVRV = {round(cur_mv,2)} (phan vi {round(cur_pct)}/100)."
+    return {"horizon": horizon, "model": "mvrv-valuation", "cutoffs": {"green_max": c1, "red_min": c2},
+            "validated": validated, "percentiles": bp, "from": dates[ti - len(rows)] if ti - len(rows) >= 0 else dates[200],
+            "inSample": fmt(in_s), "outSample": fmt(oos_s), "all": fmt(all_s), "byBucket": by_bucket,
+            "current": {"date": dates[ti], "mvrv": round(cur_mv, 3), "pct": round(cur_pct, 1), "tier": cur_tier,
+                        "usingOOS": validated,
+                        **({"n": cs["n"], "avgFwd": cs["avgFwd"], "pctNeg": cs["pctNeg"]} if cs else {}),
+                        "statement": stmt}}
+
 def main():
     out_path = "data/backtest.json"; horizon = 90
     a = sys.argv[1:]
@@ -182,6 +260,7 @@ def main():
     if not prices or len(prices) < 300:
         print("Khong du gia — bo qua."); return 0
     mvrv, fng = load_mvrv(), load_fng()
+    cm_mvrv = load_cm_mvrv()
     dates = [d for d, _ in prices]; vals = [p for _, p in prices]
     n = len(vals)
     rsi = rsi_series(vals, 14); e200 = ema_series(vals, 200)
@@ -287,6 +366,7 @@ def main():
             "current": {"date": dates[ti], "regime": cur_regime, "risk": cur_risk,
                         "usingOOS": validated, "components": cur_comp,
                         "regimeStat": rstat or {"n": 0}, "statement": stmt},
+            "longterm": longterm_analysis(dates, vals, cm_mvrv, horizon=365),
         },
     }
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
