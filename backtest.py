@@ -201,7 +201,7 @@ def longterm_analysis(dates, vals, cm_mvrv, horizon=365, min_n=40):
     for t in range(n):
         v = mv[t]
         if v is not None:
-            if len(hist) >= 60:
+            if len(hist) >= 200:  # can du lich su -> tranh nhieu percentile giai doan dau
                 pct[t] = bisect.bisect_left(hist, v) / len(hist) * 100
             bisect.insort(hist, v)
     bp = breakpoints([v for v in mv if v is not None])
@@ -217,8 +217,11 @@ def longterm_analysis(dates, vals, cm_mvrv, horizon=365, min_n=40):
     if cal:
         c1, c2 = cal
         oos = tiers_stats(oos_rows, c1, c2)
+        # kiem chung bang TAN SUAT giam (ben hon avgFwd — tranh outlier bull chu ky):
+        # dinh gia RE (Thoang) phai it lan giam hon dinh gia DAT (Rat than trong).
         validated = bool(oos["Thoang"] and oos["Rat than trong"]
-                         and oos["Thoang"]["avgFwd"] > oos["Rat than trong"]["avgFwd"])
+                         and oos["Thoang"]["n"] >= 40 and oos["Rat than trong"]["n"] >= 40
+                         and oos["Thoang"]["pctNeg"] < oos["Rat than trong"]["pctNeg"])
     else:
         c1, c2, validated = 33, 66, False
     order = ["Thoang", "Can chu y", "Rat than trong"]
