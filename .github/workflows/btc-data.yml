@@ -220,6 +220,76 @@ jobs:
           print("history.json:",len(rows),"rows; today price",row["price"],"mvrvZ",row["mvrvZ"])
           PY
 
+      - name: Gui thong bao day (ntfy — can secret NTFY_TOPIC)
+        continue-on-error: true
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          python3 - <<'PY'
+          import json, os, datetime, urllib.request
+          topic = os.environ.get("NTFY_TOPIC","").strip()
+          if not topic:
+              print("Chua co NTFY_TOPIC -> bo qua push."); raise SystemExit(0)
+          def rd(p,d):
+              try: return json.load(open(p))
+              except: return d
+          btc = rd("data/btc.json",{}); bt = rd("data/backtest.json",{}); fomc = rd("data/fomc.json",{})
+          st = rd("data/push-state.json",{})
+          msgs = []
+
+          # 1) Doi regime (gia vs EMA200)
+          price, e200 = btc.get("price"), btc.get("ema200")
+          if price is not None and e200:
+              reg = "bull" if price > e200 else "bear"
+              if st.get("lastRegime") and st["lastRegime"] != reg:
+                  msgs.append(("Xu huong doi: " + ("Tang (Bull)" if reg=="bull" else "Giam (Bear)"),
+                               "Gia " + ("vuot len tren" if reg=="bull" else "thung xuong duoi") + " duong TB 200 ngay. "
+                               + ("Nghieng thuan loi." if reg=="bull" else "Nghieng than trong.")))
+              st["lastRegime"] = reg
+
+          # 2) Dinh gia dai han RE (MVRV -> vung gom)
+          lt = (bt.get("core") or {}).get("longterm") or {}
+          cur = lt.get("current") or {}
+          tier = cur.get("tier")
+          if tier == "Thoang" and st.get("lastLongtermTier") != "Thoang":
+              pct = cur.get("pct")
+              msgs.append(("Dinh gia dai han: RE",
+                           f"MVRV phan vi ~{round(pct) if pct is not None else '?'}/100 - vung gom (khung 1 nam). "
+                           "Nha dau tu dai han co the tang lieu DCA."))
+          if tier: st["lastLongtermTier"] = tier
+
+          # 3) Sat ngay Fed (<=2 ngay)
+          today = datetime.date.today()
+          nxt = None
+          for m in fomc.get("meetings", []):
+              try: d = datetime.date.fromisoformat(m["date"])
+              except: continue
+              if d >= today and (nxt is None or d < nxt[0]): nxt = (d, m)
+          if nxt:
+              days = (nxt[0] - today).days
+              if days <= 2 and st.get("lastFedMeeting") != nxt[0].isoformat():
+                  msgs.append(("Sat ngay hop Fed",
+                               f"Con {days} ngay toi {nxt[1].get('label','FOMC')} ({nxt[0].isoformat()}). Gia de bien dong manh."))
+                  st["lastFedMeeting"] = nxt[0].isoformat()
+
+          # gui
+          if msgs:
+              url = "https://ntfy.sh/" + topic
+              for title, body in msgs:
+                  try:
+                      req = urllib.request.Request(url, data=body.encode("utf-8"),
+                          headers={"Title": title, "Tags": "chart", "Priority": "default"})
+                      urllib.request.urlopen(req, timeout=30)
+                      print("Sent:", title)
+                  except Exception as e:
+                      print("ntfy loi:", e)
+          else:
+              print("Khong co su kien de push.")
+
+          st["updatedAt"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+          json.dump(st, open("data/push-state.json","w"), ensure_ascii=False, indent=2, sort_keys=True)
+          PY
+
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"

@@ -298,6 +298,7 @@ function App(){
   const [notify, setNotify] = useState(!!init.notify);
   const [noti, setNoti] = useState(Object.assign({red:true,fed:true,cheap:true,regime:true,dca:false,dcaFreq:7}, init.noti||{}));
   const [dcaBase, setDcaBase] = useState(init.dcaBase||'');
+  const [ntfyTopic, setNtfyTopic] = useState(init.ntfyTopic||'');
   const [tab, setTab] = useState('signals');
 
   const [data, setData] = useState(null);
@@ -314,8 +315,8 @@ function App(){
   const [updatedAt, setUpdatedAt] = useState(null);
 
   useEffect(()=>{ saveState(Object.assign({}, loadState(),
-    {etfOutflow:etfManual,mstrSelling:mstr,etfNote,mstrNote,notify,dcaBase,noti})); },
-    [etfManual,mstr,etfNote,mstrNote,notify,dcaBase,noti]);
+    {etfOutflow:etfManual,mstrSelling:mstr,etfNote,mstrNote,notify,dcaBase,noti,ntfyTopic})); },
+    [etfManual,mstr,etfNote,mstrNote,notify,dcaBase,noti,ntfyTopic]);
 
   useEffect(()=>{ fetchJSON('./data/fomc.json').then(r=>r.json())
     .then(j=>setFomc(daysToNextFOMC(j.meetings))).catch(()=>{}); },[]);
@@ -792,7 +793,28 @@ function App(){
           </div>}
         </div>}
 
-        <div className="hint" style={{marginTop:12}}>⚠️ Giới hạn: app tĩnh chỉ nhắc được <b>khi bạn mở app</b> (mỗi loại tối đa 1 lần/ngày) — trình duyệt không cho chạy ngầm khi đã đóng hẳn. Cài app ra màn hình chính (PWA) để mở nhanh & nhận nhắc thường xuyên hơn.</div>
+        <div className="hint" style={{marginTop:12}}>⚠️ Các nhắc trên chỉ chạy <b>khi bạn mở app</b>. Muốn nhận <b>khi đã đóng app</b> → dùng push đẩy qua ntfy bên dưới.</div>
+
+        <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid var(--line)'}}>
+          <b style={{fontSize:'14px'}}>📲 Push khi đóng app (qua ntfy)</b>
+          <div className="hint" style={{marginTop:6,lineHeight:1.6}}>GitHub Action (chạy hằng ngày) sẽ đẩy thông báo khi <b>đổi xu hướng · định giá rẻ · sát ngày Fed</b> — kể cả khi app đóng. Cần cài app <b>ntfy</b> (miễn phí) và đặt cùng một "chủ đề".</div>
+          <div className="hint" style={{marginTop:8}}>Chủ đề (topic) — đặt một chuỗi khó đoán:</div>
+          <div style={{display:'flex',gap:8,marginTop:6}}>
+            <input value={ntfyTopic} onChange={e=>setNtfyTopic(e.target.value.trim())} placeholder="vd: btc-huy-9f3ka2"
+              style={{flex:1,background:'var(--panel2)',border:'1px solid var(--line)',color:'var(--text)',borderRadius:10,padding:'10px 12px',font:'inherit',fontSize:'14px'}}/>
+            <button className="btn" style={{width:'auto',padding:'0 14px'}}
+              onClick={()=>setNtfyTopic('btc-'+Math.random().toString(36).slice(2,10))}>🎲</button>
+          </div>
+          {ntfyTopic && <a className="btn on" style={{display:'block',textAlign:'center',marginTop:10,textDecoration:'none'}}
+            href={'https://ntfy.sh/'+ntfyTopic} target="_blank" rel="noopener">Mở / đăng ký chủ đề trong ntfy ↗</a>}
+          <div className="hint" style={{marginTop:10,lineHeight:1.7}}>
+            <b>3 bước:</b><br/>
+            1. Cài app <b>ntfy</b> (App Store / Google Play) → Subscribe chủ đề trên (hoặc bấm nút xanh).<br/>
+            2. Vào repo GitHub → Settings → Secrets and variables → Actions → thêm secret <b>NTFY_TOPIC</b> = đúng chuỗi trên.<br/>
+            3. Xong! Mỗi ngày Action tự kiểm tra & đẩy khi có sự kiện.
+          </div>
+          <div className="hint" style={{marginTop:8}}>⚠️ Ai biết chủ đề cũng nhận/gửi được — nên đặt chuỗi ngẫu nhiên, đừng chia sẻ.</div>
+        </div>
       </div>
 
       {updatedAt && <div className="updated">

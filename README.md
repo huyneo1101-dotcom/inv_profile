@@ -30,6 +30,11 @@ Các tín hiệu "cơ hội" (RSI<30, sợ hãi tột độ, funding âm, MVRV v
 ## Thiết lập
 1. **Bật GitHub Pages**: Settings → Pages → Source = **GitHub Actions**.
 2. **(Tuỳ chọn) Macro FRED**: Settings → Secrets and variables → Actions → thêm secret `FRED_API_KEY` (lấy free tại [fred.stlouisfed.org](https://fred.stlouisfed.org/docs/api/api_key.html)). Thiếu key thì app vẫn chạy, chỉ bỏ phần macro.
+3. **(Tuỳ chọn) Push khi đóng app — ntfy**: nhận thông báo đẩy khi **đổi xu hướng · định giá rẻ · sát ngày Fed**, kể cả khi app đã đóng. Không cần server riêng.
+   - Cài app **ntfy** (miễn phí, App Store/Google Play) → Subscribe một **chủ đề** (topic) khó đoán, vd `btc-<chuỗi-ngẫu-nhiên>`.
+   - Repo → Settings → Secrets and variables → Actions → thêm secret **`NTFY_TOPIC`** = đúng chuỗi topic đó.
+   - Workflow `btc-data.yml` (chạy hằng ngày) tự kiểm tra & POST lên `ntfy.sh/<topic>` khi có sự kiện. File `data/push-state.json` chống gửi trùng.
+   - ⚠️ Ai biết topic cũng nhận/gửi được → đặt chuỗi ngẫu nhiên, không chia sẻ. Không có secret thì bước này tự bỏ qua.
 
 ## ⚠️ Miễn trừ
 Đây là công cụ tổng hợp tín hiệu để tham khảo, **không phải lời khuyên đầu tư**. Không tín hiệu nào đảm bảo giá lên hay xuống. Quá khứ không đảm bảo tương lai.
