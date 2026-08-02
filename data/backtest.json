@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-02T04:21:22Z",
+  "generatedAt": "2026-08-02T10:57:07Z",
   "note": "v3.1: Tin hieu CHINH = REGIME (gia vs EMA200) — backtest 10 nam cho thay day la tin hieu sach nhat o khung 90 ngay (bull >> bear). Rui ro dinh gia (MVRV+Fear&Greed+RSI+do gian tren EMA200, phan vi lich su 0..100) chi la NHIET KE boi canh: o khung 90 ngay momentum lan at nen no KHONG bao giam. Qua khu khong dam bao tuong lai.",
   "coverage": {
     "from": "2016-02-05",
@@ -294,11 +294,11 @@
           45.236612,
           45.603965,
           45.848215,
-          46.193098,
-          46.480281,
-          46.881682,
-          47.250258,
-          47.520887,
+          46.181659,
+          46.469343,
+          46.877744,
+          47.241569,
+          47.519064,
           47.826371,
           48.200934,
           48.673411,
@@ -384,7 +384,7 @@
           -0.151219,
           -0.143802,
           -0.139319,
-          -0.132002,
+          -0.132271,
           -0.126444,
           -0.11752,
           -0.108554,
@@ -539,7 +539,7 @@
     "current": {
       "date": "2026-08-02",
       "regime": "bear",
-      "risk": 28.6,
+      "risk": 26.6,
       "usingOOS": true,
       "components": {
         "mvrvZ": {
@@ -551,12 +551,12 @@
           "pct": 28.0
         },
         "rsi": {
-          "value": 47.595,
-          "pct": 37.2
+          "value": 45.857,
+          "pct": 32.0
         },
         "ext": {
-          "value": -0.128,
-          "pct": 20.7
+          "value": -0.133,
+          "pct": 19.9
         }
       },
       "regimeStat": {
@@ -564,7 +564,7 @@
         "avgFwd": 9.9,
         "pctNeg": 51.3
       },
-      "statement": "Regime hien tai = bear (gia duoi EMA200). (out-of-sample) sau 90 ngay: TB 9.9%, 51.3% so lan gia THAP hon. [Bull vs Bear toan lich su: 30.5% vs 7.8%]. Nhiet ke rui ro dinh gia = 28.6/100 (boi canh)."
+      "statement": "Regime hien tai = bear (gia duoi EMA200). (out-of-sample) sau 90 ngay: TB 9.9%, 51.3% so lan gia THAP hon. [Bull vs Bear toan lich su: 30.5% vs 7.8%]. Nhiet ke rui ro dinh gia = 26.6/100 (boi canh)."
     },
     "longterm": {
       "horizon": 365,
@@ -781,6 +781,25 @@
         "pctNeg": 8.3,
         "statement": "MVRV hien tai = 1.19 (phan vi 15/100) -> \"Thoang\". (toan bo lich su) 860 lan tuong tu, sau 1 nam TB 117.5%, 8.3% so lan giam."
       }
+    },
+    "bottomAnalog": {
+      "window": 270,
+      "nAnalogs": 103,
+      "setup": {
+        "regime": "bear",
+        "valPct": 14.5
+      },
+      "drawdown": {
+        "median": -21.2,
+        "deep": -48.1,
+        "shallow": -3.9
+      },
+      "weeks": {
+        "median": 7.7,
+        "soon": 1.3,
+        "late": 16.1
+      },
+      "pctNearBottom": 18.4
     }
   }
 }
