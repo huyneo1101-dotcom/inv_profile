@@ -296,6 +296,7 @@ function App(){
   const [etfNote, setEtfNote] = useState(init.etfNote||'');
   const [mstrNote, setMstrNote] = useState(init.mstrNote||'');
   const [notify, setNotify] = useState(!!init.notify);
+  const [noti, setNoti] = useState(Object.assign({red:true,fed:true,cheap:true,regime:true,dca:false,dcaFreq:7}, init.noti||{}));
   const [dcaBase, setDcaBase] = useState(init.dcaBase||'');
   const [tab, setTab] = useState('signals');
 
@@ -312,8 +313,9 @@ function App(){
   const [backtest, setBacktest] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
 
-  useEffect(()=>{ saveState({etfOutflow:etfManual,mstrSelling:mstr,etfNote,mstrNote,notify,dcaBase,
-    lastNotifiedDate:loadState().lastNotifiedDate||''}); },[etfManual,mstr,etfNote,mstrNote,notify,dcaBase]);
+  useEffect(()=>{ saveState(Object.assign({}, loadState(),
+    {etfOutflow:etfManual,mstrSelling:mstr,etfNote,mstrNote,notify,dcaBase,noti})); },
+    [etfManual,mstr,etfNote,mstrNote,notify,dcaBase,noti]);
 
   useEffect(()=>{ fetchJSON('./data/fomc.json').then(r=>r.json())
     .then(j=>setFomc(daysToNextFOMC(j.meetings))).catch(()=>{}); },[]);
@@ -376,16 +378,27 @@ function App(){
     [trend,fomc,data,fng,funding,etf.active,etf.auto,etf.streak,mstr,mvrv,macro]);
 
   useEffect(()=>{
-    if(!notify || loading || !data) return;
+    if(!notify || loading) return;
     if(!('Notification' in window) || Notification.permission!=='granted') return;
     const today = new Date().toISOString().slice(0,10);
     const st = loadState();
-    if(st.lastNotifiedDate === today) return;
-    if(result.color==='red' || (fomc && fomc.days<=2)){
-      try{ new Notification('BTC Tín Hiệu — '+result.level, {body:result.guide, icon:'icon.svg'});
-        saveState({...st, lastNotifiedDate:today}); }catch(e){}
+    const log = st.notiLog || {};
+    const msgs = [];
+    if(noti.red && data && result.color==='red' && log.red!==today){ msgs.push('🔴 Mức thận trọng đang ĐỎ'); log.red=today; }
+    if(noti.fed && fomc && fomc.days<=2 && log.fed!==today){ msgs.push('🏛️ Sát ngày Fed (còn '+fomc.days+' ngày)'); log.fed=today; }
+    const lt = backtest && backtest.core && backtest.core.longterm && backtest.core.longterm.current;
+    if(noti.cheap && lt && lt.tier==='Thoang' && log.cheap!==today){ msgs.push('🟢 Định giá dài hạn đang RẺ — vùng gom'); log.cheap=today; }
+    const curReg = backtest && backtest.core && backtest.core.current ? backtest.core.current.regime : null;
+    if(noti.regime && curReg && st.lastRegime && st.lastRegime!==curReg && log.regime!==today){
+      msgs.push('🔀 Regime đổi: '+(st.lastRegime==='bull'?'Tăng':'Giảm')+' → '+(curReg==='bull'?'Tăng':'Giảm')); log.regime=today; }
+    let dcaLast = st.dcaLast;
+    if(noti.dca){
+      const gap = dcaLast ? Math.floor((new Date(today)-new Date(dcaLast))/86400000) : 9999;
+      if(gap >= (noti.dcaFreq||7)){ msgs.push('🗓️ Đến kỳ mua định kỳ (DCA)'); dcaLast=today; }
     }
-  },[notify,loading,data,result,fomc]);
+    saveState(Object.assign({}, st, {notiLog:log, lastRegime:curReg||st.lastRegime, dcaLast}));
+    if(msgs.length){ try{ new Notification('BTC Tín Hiệu', {body:msgs.join('\n'), icon:'icon.svg'}); }catch(e){} }
+  },[notify,noti,loading,data,result,fomc,backtest]);
 
   const toggleNotify = useCallback(async ()=>{
     if(notify){ setNotify(false); return; }
@@ -748,13 +761,38 @@ function App(){
         </div>;
       })()}
 
-      {/* NHẮC */}
+      {/* THÔNG BÁO */}
       <div className="card">
-        <h2>Nhắc nhở</h2>
+        <h2>Thông báo</h2>
         <button className={'btn'+(notify?' on':'')} onClick={toggleNotify}>
-          {notify?'🔔 Đang bật nhắc — bấm để tắt':'🔕 Bật nhắc khi thị trường thận trọng'}
+          {notify?'🔔 Thông báo đang BẬT — bấm để tắt':'🔕 Bật thông báo'}
         </button>
-        <div className="hint">Khi mở app mà mức là 🔴 hoặc sát ngày Fed (≤2 ngày), app nhắc 1 lần/ngày. (Giới hạn: chỉ nhắc khi bạn mở app — trình duyệt không cho app tĩnh chạy ngầm khi đóng hẳn.)</div>
+
+        {notify && <div style={{marginTop:6}}>
+          {[
+            ['red','Mức thận trọng đỏ','Khi đèn tổng chuyển 🔴'],
+            ['cheap','Định giá rẻ (vùng gom)','Khi MVRV dài hạn vào vùng rẻ — gợi ý tăng mua'],
+            ['regime','Đổi xu hướng (regime)','Khi giá vượt/thủng EMA200 (bull ↔ bear)'],
+            ['fed','Sát ngày họp Fed','Khi còn ≤ 2 ngày tới FOMC'],
+            ['dca','Nhắc lịch mua định kỳ (DCA)','Nhắc đến kỳ mua theo tần suất bạn chọn'],
+          ].map(([k,label,desc])=>(
+            <div className="switch-row" key={k} style={{marginTop:12}}>
+              <div><b>{label}</b><div className="hint">{desc}</div></div>
+              <label className="switch"><input type="checkbox" checked={!!noti[k]} onChange={e=>setNoti(Object.assign({},noti,{[k]:e.target.checked}))}/><span className="slider"></span></label>
+            </div>
+          ))}
+          {noti.dca && <div className="switch-row" style={{marginTop:12}}>
+            <div><b>Tần suất DCA</b><div className="hint">Chu kỳ nhắc mua</div></div>
+            <select value={noti.dcaFreq} onChange={e=>setNoti(Object.assign({},noti,{dcaFreq:parseInt(e.target.value,10)}))}
+              style={{background:'var(--panel2)',border:'1px solid var(--line)',color:'var(--text)',borderRadius:10,padding:'8px 10px',font:'inherit',fontSize:'14px'}}>
+              <option value={7}>Hằng tuần</option>
+              <option value={14}>2 tuần</option>
+              <option value={30}>Hằng tháng</option>
+            </select>
+          </div>}
+        </div>}
+
+        <div className="hint" style={{marginTop:12}}>⚠️ Giới hạn: app tĩnh chỉ nhắc được <b>khi bạn mở app</b> (mỗi loại tối đa 1 lần/ngày) — trình duyệt không cho chạy ngầm khi đã đóng hẳn. Cài app ra màn hình chính (PWA) để mở nhanh & nhận nhắc thường xuyên hơn.</div>
       </div>
 
       {updatedAt && <div className="updated">
