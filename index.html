@@ -239,6 +239,25 @@ function coreTier(risk, cutoffs){
   return 'Can chu y';
 }
 const COMP_VI = {mvrvZ:'MVRV Z', fng:'Sợ hãi & Tham lam', rsi:'RSI', ext:'Giãn trên EMA200'};
+
+/* Gợi ý DCA cho nhà đầu tư dài hạn: điều tiết liều mua theo ĐỊNH GIÁ (MVRV phân vị).
+   Neo vào backtest 1 năm: định giá càng rẻ → 1 năm sau càng hiếm khi giảm. */
+function dcaSuggestion(pct, regime){
+  if(pct==null) return null;
+  let mult, label, color, zone;
+  if(pct < 15){ mult=2.0; label='Tăng mua mạnh'; color='var(--green)'; zone='rất rẻ'; }
+  else if(pct < 30){ mult=1.5; label='Tăng mua'; color='var(--green)'; zone='rẻ'; }
+  else if(pct < 50){ mult=1.2; label='Mua nhỉnh hơn'; color='var(--green)'; zone='hợp lý (thiên rẻ)'; }
+  else if(pct < 70){ mult=1.0; label='Mua đều'; color='var(--yellow)'; zone='hợp lý'; }
+  else if(pct < 85){ mult=0.6; label='Giảm liều'; color='var(--red)'; zone='hơi đắt'; }
+  else { mult=0.3; label='Giãn / tạm dừng'; color='var(--red)'; zone='đắt'; }
+  const regNote = regime==='bear'
+    ? 'Xu hướng ngắn hạn đang giảm → chia lệnh nhỏ, rải nhiều nhịp trong kỳ (dễ có giá thấp hơn).'
+    : regime==='bull'
+    ? 'Xu hướng ngắn hạn đang tăng → mua đều theo lịch, không cần chờ giảm sâu.'
+    : '';
+  return { mult, label, color, zone, regNote };
+}
 const TIER_VI = {'Thoang':'Thoáng','Can chu y':'Cần chú ý','Rat than trong':'Rất thận trọng'};
 const TIER_COLOR = {'Thoang':'var(--green)','Can chu y':'var(--yellow)','Rat than trong':'var(--red)'};
 
@@ -262,6 +281,7 @@ function App(){
   const [etfNote, setEtfNote] = useState(init.etfNote||'');
   const [mstrNote, setMstrNote] = useState(init.mstrNote||'');
   const [notify, setNotify] = useState(!!init.notify);
+  const [dcaBase, setDcaBase] = useState(init.dcaBase||'');
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -276,8 +296,8 @@ function App(){
   const [backtest, setBacktest] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
 
-  useEffect(()=>{ saveState({etfOutflow:etfManual,mstrSelling:mstr,etfNote,mstrNote,notify,
-    lastNotifiedDate:loadState().lastNotifiedDate||''}); },[etfManual,mstr,etfNote,mstrNote,notify]);
+  useEffect(()=>{ saveState({etfOutflow:etfManual,mstrSelling:mstr,etfNote,mstrNote,notify,dcaBase,
+    lastNotifiedDate:loadState().lastNotifiedDate||''}); },[etfManual,mstr,etfNote,mstrNote,notify,dcaBase]);
 
   useEffect(()=>{ fetch('./data/fomc.json').then(r=>r.json())
     .then(j=>setFomc(daysToNextFOMC(j.meetings))).catch(()=>{}); },[]);
@@ -388,6 +408,45 @@ function App(){
         </div>}
         {!loading && <div className="hint" style={{marginTop:10}}>Tổng hợp nhanh nhiều tín hiệu (tham khảo, <b>chưa kiểm chứng</b>). Mô hình đã backtest nằm ở thẻ “Regime & xác suất” bên dưới.</div>}
       </div>
+
+      {/* GỢI Ý MUA — NHÀ ĐẦU TƯ DÀI HẠN (DCA điều tiết theo định giá) */}
+      {backtest && backtest.core && backtest.core.longterm && backtest.core.longterm.current && (()=>{
+        const lt = backtest.core.longterm.current;
+        const regime = backtest.core.current ? backtest.core.current.regime : null;
+        const sug = dcaSuggestion(lt.pct, regime);
+        if(!sug) return null;
+        const base = parseFloat(String(dcaBase).replace(/[^\d.]/g,''));
+        const suggested = (!isNaN(base) && base>0) ? Math.round(base*sug.mult) : null;
+        return <div className="card" style={{border:'1px solid '+sug.color}}>
+          <h2>Gợi ý mua — đầu tư dài hạn (DCA)</h2>
+          <div className="price-row">
+            <span className="price" style={{color:sug.color,fontSize:'26px'}}>{sug.label}</span>
+            <span className="chg" style={{color:sug.color,fontWeight:800}}>≈ {sug.mult}× mức định kỳ</span>
+          </div>
+          <div className="hint" style={{marginTop:6}}>
+            Định giá dài hạn đang <b>{sug.zone}</b> (MVRV phân vị {lt.pct!=null?Math.round(lt.pct):'—'}/100).
+            {lt.n>0 && <span> Lịch sử vùng này: 1 năm sau chỉ <b>{lt.pctNeg}%</b> số lần giá thấp hơn.</span>}
+          </div>
+
+          <div style={{marginTop:12}}>
+            <div className="hint" style={{marginBottom:4}}>Số tiền bạn mua định kỳ (mỗi tuần/tháng):</div>
+            <input inputMode="numeric" placeholder="vd: 2000000" value={dcaBase}
+              onChange={e=>setDcaBase(e.target.value)}
+              style={{width:'100%',background:'var(--panel2)',border:'1px solid var(--line)',color:'var(--text)',borderRadius:10,padding:'10px 12px',font:'inherit',fontSize:'15px'}}/>
+            {suggested!=null &&
+              <div style={{marginTop:10,fontSize:'15px',background:'var(--panel2)',borderRadius:12,padding:'12px 13px'}}>
+                Kỳ này cân nhắc mua ≈ <b style={{color:sug.color,fontSize:'18px'}}>{suggested.toLocaleString('vi-VN')}</b>
+                <span style={{color:'var(--muted)'}}> (× {sug.mult})</span>
+              </div>}
+          </div>
+
+          {sug.regNote && <div className="hint" style={{marginTop:10}}>🧭 {sug.regNote}</div>}
+
+          <div className="hint" style={{marginTop:10,lineHeight:1.6}}>
+            <b>Cách dùng:</b> vẫn mua <b>đều theo lịch</b> (DCA), chỉ <b>tăng/giảm liều</b> theo định giá — rẻ mua nhiều hơn, đắt mua ít lại. ⚠️ Đây là gợi ý điều tiết dựa trên tiền lệ lịch sử, <b>không phải lệnh mua</b>; đừng dồn hết một lần, chỉ dùng tiền chấp nhận rủi ro. Khung tham chiếu: ~1 năm.
+          </div>
+        </div>;
+      })()}
 
       {/* GIÁ + EMA */}
       <div className="card">
