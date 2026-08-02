@@ -252,6 +252,45 @@ def longterm_analysis(dates, vals, cm_mvrv, horizon=365, min_n=40):
                         **({"n": cs["n"], "avgFwd": cs["avgFwd"], "pctNeg": cs["pctNeg"]} if cs else {}),
                         "statement": stmt}}
 
+def bottom_analog(dates, vals, e200, cm_mvrv, cur_regime, cur_pct, window=270, band=15):
+    """Tien le toi day: cac ngay lich su GIONG hien tai (cung regime + dinh gia trong band
+    +-15 phan vi) -> do gia con giam them bao nhieu (den day trong 'window' ngay toi) va mat
+    bao lau. Tra phan bo median + 25/75%. KHONG phai du bao — chi la thong ke tien le."""
+    n = len(vals)
+    mv = [cm_mvrv.get(d) for d in dates]
+    hist = []; pct = [None] * n
+    for t in range(n):
+        v = mv[t]
+        if v is not None:
+            if len(hist) >= 200:
+                pct[t] = bisect.bisect_left(hist, v) / len(hist) * 100
+            bisect.insort(hist, v)
+    dds, wks, last = [], [], -999
+    for t in range(200, n - window):
+        if pct[t] is None: continue
+        regime = "bull" if (e200[t] and vals[t] > e200[t]) else "bear"
+        if regime != cur_regime: continue
+        if abs(pct[t] - cur_pct) > band: continue
+        if t - last < 7: continue      # thin 7 ngay -> giam tu tuong quan
+        last = t
+        seg = vals[t + 1:t + window + 1]
+        if not seg: continue
+        mn = min(seg); idx = seg.index(mn)
+        dds.append((mn - vals[t]) / vals[t]); wks.append((idx + 1) / 7.0)
+    if len(dds) < 8:
+        return None
+    def pctl(a, p):
+        s = sorted(a); return s[min(len(s) - 1, int(round(p / 100 * (len(s) - 1))))]
+    return {
+        "window": window, "nAnalogs": len(dds),
+        "setup": {"regime": cur_regime, "valPct": round(cur_pct, 1)},
+        "drawdown": {"median": round(pctl(dds, 50) * 100, 1),
+                     "deep": round(pctl(dds, 25) * 100, 1), "shallow": round(pctl(dds, 75) * 100, 1)},
+        "weeks": {"median": round(pctl(wks, 50), 1),
+                  "soon": round(pctl(wks, 25), 1), "late": round(pctl(wks, 75), 1)},
+        "pctNearBottom": round(sum(1 for x in dds if x > -0.03) / len(dds) * 100, 1),
+    }
+
 def main():
     out_path = "data/backtest.json"; horizon = 90
     a = sys.argv[1:]
@@ -351,6 +390,11 @@ def main():
     else:
         stmt = f"Regime = {cur_regime}. Rui ro dinh gia = {cur_risk}/100."
 
+    lt_res = longterm_analysis(dates, vals, cm_mvrv, horizon=365)
+    bottom = None
+    if lt_res and lt_res["current"].get("pct") is not None:
+        bottom = bottom_analog(dates, vals, e200, cm_mvrv, cur_regime, lt_res["current"]["pct"])
+
     res = {
         "generatedAt": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "note": ("v3.1: Tin hieu CHINH = REGIME (gia vs EMA200) — backtest 10 nam cho thay day la "
@@ -369,7 +413,8 @@ def main():
             "current": {"date": dates[ti], "regime": cur_regime, "risk": cur_risk,
                         "usingOOS": validated, "components": cur_comp,
                         "regimeStat": rstat or {"n": 0}, "statement": stmt},
-            "longterm": longterm_analysis(dates, vals, cm_mvrv, horizon=365),
+            "longterm": lt_res,
+            "bottomAnalog": bottom,
         },
     }
     os.makedirs(os.path.dirname(out_path), exist_ok=True)

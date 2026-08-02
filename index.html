@@ -685,6 +685,45 @@ function App(){
         </div>;
       })()}
 
+      {/* TIỀN LỆ TỚI ĐÁY */}
+      {backtest && backtest.core && backtest.core.bottomAnalog && (()=>{
+        const b = backtest.core.bottomAnalog;
+        const dd = b.drawdown, wk = b.weeks;
+        const wkMonths = (w)=> (w/4.33).toFixed(w>=8?0:1);
+        return <div className="card">
+          <h2>Tiền lệ tới đáy (tham khảo — KHÔNG phải dự báo)</h2>
+          <div className="hint" style={{marginBottom:10}}>
+            Lọc <b>{b.nAnalogs}</b> lần trong lịch sử có bối cảnh giống hiện tại
+            (regime <b>{b.setup.regime==='bear'?'giảm':'tăng'}</b> + định giá phân vị ~{Math.round(b.setup.valPct)}),
+            xem sau đó giá còn giảm thêm bao nhiêu & mất bao lâu tới đáy (trong ~{Math.round(b.window/30)} tháng).
+          </div>
+
+          <div className="emagrid">
+            <div className="ema">
+              <div className="k">Thường còn giảm thêm</div>
+              <div className="v" style={{color: dd.median<-3?'var(--red)':'var(--green)'}}>{dd.median}%</div>
+              <div className="rel" style={{color:'var(--muted)'}}>khoảng {dd.deep}% … {dd.shallow}%</div>
+            </div>
+            <div className="ema">
+              <div className="k">Thời gian tới đáy</div>
+              <div className="v" style={{color:'var(--blue)'}}>{wk.median} tuần</div>
+              <div className="rel" style={{color:'var(--muted)'}}>khoảng {wk.soon} … {wk.late} tuần (~{wkMonths(wk.soon)}–{wkMonths(wk.late)} tháng)</div>
+            </div>
+          </div>
+
+          <div style={{fontSize:'14px',lineHeight:1.6,background:'var(--panel2)',borderRadius:12,padding:'12px 13px',marginTop:12}}>
+            <b>{b.pctNearBottom}%</b> số lần tương tự gần như <b>đã ở đáy</b> (không giảm thêm quá 3%).
+            {dd.median>-3
+              ? <span> Đa số tiền lệ cho thấy vùng này thường <b>gần đáy</b>.</span>
+              : <span> Nghĩa là vẫn còn khả năng giảm thêm trước khi tạo đáy.</span>}
+          </div>
+
+          <div className="hint" style={{marginTop:10,lineHeight:1.6}}>
+            ⚠️ Đây là <b>thống kê tiền lệ</b>, KHÔNG phải dự báo — lần này có thể khác hoàn toàn. Khoảng rộng chính là <b>độ bất định</b>: không ai biết đáy chính xác ở đâu hay khi nào. Dùng để chuẩn bị tâm lý & chia lệnh, không dùng để canh mua đúng đáy.
+          </div>
+        </div>;
+      })()}
+
       {/* NHẮC */}
       <div className="card">
         <h2>Nhắc nhở</h2>
