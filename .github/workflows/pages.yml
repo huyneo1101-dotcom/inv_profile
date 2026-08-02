@@ -3,6 +3,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Commit du lieu do Action bot tao KHONG tu trigger workflow khac -> deploy lai
+  # Pages moi khi workflow du lieu chay xong (neu khong web se hien du lieu cu).
+  workflow_run:
+    workflows: ["Cap nhat du lieu BTC", "Backtest bo luat BTC"]
+    types: [completed]
 permissions:
   contents: read
   pages: write
