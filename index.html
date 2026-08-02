@@ -116,6 +116,7 @@ const FUND_URL   = 'https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT
 /* ---------- helpers ---------- */
 function loadState(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }catch(e){ return {}; } }
 function saveState(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){} }
+function fetchJSON(p){ return fetch(p+'?t='+Date.now(), {cache:'no-store'}); }  /* cache-bust: web luon lay data moi */
 function fmtUSD(n){ return (n==null||isNaN(n)) ? '—' : '$'+Math.round(n).toLocaleString('en-US'); }
 function computeEMA(prices, period){
   if(!prices || prices.length < period) return null;
@@ -299,17 +300,17 @@ function App(){
   useEffect(()=>{ saveState({etfOutflow:etfManual,mstrSelling:mstr,etfNote,mstrNote,notify,dcaBase,
     lastNotifiedDate:loadState().lastNotifiedDate||''}); },[etfManual,mstr,etfNote,mstrNote,notify,dcaBase]);
 
-  useEffect(()=>{ fetch('./data/fomc.json').then(r=>r.json())
+  useEffect(()=>{ fetchJSON('./data/fomc.json').then(r=>r.json())
     .then(j=>setFomc(daysToNextFOMC(j.meetings))).catch(()=>{}); },[]);
-  useEffect(()=>{ fetch('./data/etf.json').then(r=>r.json())
+  useEffect(()=>{ fetchJSON('./data/etf.json').then(r=>r.json())
     .then(j=>{ if(j && j.latestNetFlow!=null) setEtfData(j); }).catch(()=>{}); },[]);
-  useEffect(()=>{ fetch('./data/mstr.json').then(r=>r.json())
+  useEffect(()=>{ fetchJSON('./data/mstr.json').then(r=>r.json())
     .then(j=>{ if(j && j.latest8K) setMstrData(j); }).catch(()=>{}); },[]);
-  useEffect(()=>{ fetch('./data/onchain.json').then(r=>r.json())
+  useEffect(()=>{ fetchJSON('./data/onchain.json').then(r=>r.json())
     .then(j=>{ if(j && j.mvrvZscore!=null) setMvrv(j.mvrvZscore); }).catch(()=>{}); },[]);
-  useEffect(()=>{ fetch('./data/macro.json').then(r=>r.json())
+  useEffect(()=>{ fetchJSON('./data/macro.json').then(r=>r.json())
     .then(j=>{ if(j && (j.dxy||j.us10y||j.m2)) setMacro(j); }).catch(()=>{}); },[]);
-  useEffect(()=>{ fetch('./data/backtest.json').then(r=>r.json())
+  useEffect(()=>{ fetchJSON('./data/backtest.json').then(r=>r.json())
     .then(j=>{ if(j && j.core) setBacktest(j); }).catch(()=>{}); },[]);
 
   // giá + EMA + RSI (CoinGecko live, fallback file)
@@ -330,7 +331,7 @@ function App(){
         return;
       }catch(e){
         try{
-          const j2 = await (await fetch('./data/btc.json')).json();
+          const j2 = await (await fetchJSON('./data/btc.json')).json();
           if(j2 && j2.price!=null && !done){
             const hp=(j2.history||[]).map(h=>h.price);
             setData({price:j2.price,e50:j2.ema50,e200:j2.ema200,prev:null,
