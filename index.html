@@ -96,6 +96,20 @@
   .err{background:rgba(239,83,80,.12);border:1px solid rgba(239,83,80,.4);border-radius:10px;
     padding:9px 11px;font-size:12.5px;color:#ff9a97;margin-bottom:12px}
   .skel{color:var(--muted);font-size:14px}
+  /* Tabs */
+  .tabbar{display:flex;gap:8px;margin:0 0 16px}
+  .tabbtn{flex:1;padding:11px;border-radius:12px;border:1px solid var(--line);
+    background:var(--panel);color:var(--muted);font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+  .tabbtn.on{background:rgba(247,147,26,.16);border-color:var(--orange);color:#ffc06b}
+  /* Learn cards (accordion) */
+  .lc{border-top:1px solid var(--line)}
+  .lc:first-of-type{border-top:0}
+  .lc-q{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:none;border:0;color:var(--text);font:inherit;font-weight:600;font-size:14.5px;
+    text-align:left;padding:12px 0;cursor:pointer}
+  .lc-ar{color:var(--orange);font-size:20px;font-weight:700;flex:0 0 auto;line-height:1}
+  .lc-a{font-size:13.5px;line-height:1.65;color:var(--text);padding:0 2px 14px}
+  .lc-a b{color:#ffd9a6}
 </style>
 </head>
 <body>
@@ -283,6 +297,7 @@ function App(){
   const [mstrNote, setMstrNote] = useState(init.mstrNote||'');
   const [notify, setNotify] = useState(!!init.notify);
   const [dcaBase, setDcaBase] = useState(init.dcaBase||'');
+  const [tab, setTab] = useState('signals');
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -395,6 +410,14 @@ function App(){
       <header><div className="logo">₿</div><h1>BTC Tín Hiệu</h1></header>
       <div className="sub">Bảng tín hiệu thận trọng — trợ lý ra quyết định mua từ từ, không phải lời khuyên đầu tư.</div>
 
+      <div className="tabbar">
+        <button className={'tabbtn'+(tab==='signals'?' on':'')} onClick={()=>setTab('signals')}>📊 Tín hiệu</button>
+        <button className={'tabbtn'+(tab==='learn'?' on':'')} onClick={()=>{setTab('learn');window.scrollTo(0,0);}}>📚 Học</button>
+      </div>
+
+      {tab==='learn' && <LearnTab/>}
+
+      {tab==='signals' && <React.Fragment>
       {err && <div className="err">{err}</div>}
 
       {/* ĐÈN TỔNG */}
@@ -740,6 +763,108 @@ function App(){
         ⚠️ Công cụ tổng hợp tín hiệu để tham khảo, <b>không phải lời khuyên đầu tư</b>.
         Không tín hiệu nào đảm bảo giá sẽ lên hay xuống. Tự chịu trách nhiệm với quyết định của mình,
         chỉ dùng tiền bạn sẵn sàng chấp nhận rủi ro.
+      </div>
+      </React.Fragment>}
+    </div>
+  );
+}
+
+/* ---------- TAB HỌC: từ điển thuật ngữ + kiến thức đầu tư BTC ---------- */
+function LC({q, children}){
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="lc">
+      <button className="lc-q" onClick={()=>setOpen(!open)}>
+        <span>{q}</span><span className="lc-ar">{open?'−':'+'}</span>
+      </button>
+      {open && <div className="lc-a">{children}</div>}
+    </div>
+  );
+}
+function LearnTab(){
+  return (
+    <div>
+      <div className="card" style={{background:'linear-gradient(135deg,rgba(247,147,26,.12),rgba(91,157,255,.08))'}}>
+        <h2 style={{color:'var(--orange)'}}>Học đầu tư BTC từ đầu</h2>
+        <div style={{fontSize:'14px',lineHeight:1.6}}>Bấm vào từng mục để mở giải thích. Sắp xếp từ dễ tới khó, gắn với đúng những gì hiển thị trong app. Đọc dần, không cần thuộc hết.</div>
+      </div>
+
+      <div className="card">
+        <h2>1 · Nền tảng Bitcoin</h2>
+        <LC q="Bitcoin (BTC) là gì?">Tiền mã hoá đầu tiên, ra đời 2009. Là "tiền số" chạy trên một mạng máy tính phân tán, <b>không do ngân hàng hay chính phủ nào phát hành</b>. Tổng cung giới hạn <b>21 triệu</b> BTC — không ai in thêm được, nên nhiều người coi là "vàng số" chống mất giá.</LC>
+        <LC q="Blockchain (chuỗi khối)">Cuốn sổ cái ghi mọi giao dịch, được hàng nghìn máy tính khắp thế giới cùng giữ và kiểm tra. Đã ghi thì <b>không sửa/xoá được</b>. Nhờ vậy không cần "bên trung gian" tin cậy.</LC>
+        <LC q="Ví (wallet) & khoá riêng (private key)">Ví là nơi giữ BTC của bạn. <b>Khoá riêng</b> (hoặc 12–24 từ khôi phục "seed phrase") là mật khẩu tối thượng — <b>ai có nó thì sở hữu số BTC đó</b>. Mất khoá = mất tiền, không ai lấy lại được. TUYỆT ĐỐI không chụp màn hình, không gửi cho ai.</LC>
+        <LC q="Sàn giao dịch (exchange)">Nơi mua/bán BTC bằng tiền thường (Binance, Coinbase, OKX…). Tiện nhưng "tiền để trên sàn = sàn giữ hộ" — sàn sập/bị hack thì rủi ro. Câu nói kinh điển: <b>"Not your keys, not your coins"</b> (không phải khoá của bạn thì không phải coin của bạn).</LC>
+        <LC q="Tự lưu ký (self-custody)">Rút BTC về ví riêng bạn tự giữ khoá (ví cứng như Ledger/Trezor là an toàn nhất). Dài hạn nên học cái này để không phụ thuộc sàn.</LC>
+        <LC q="Satoshi (sat)">Đơn vị nhỏ nhất của BTC. 1 BTC = 100 triệu sat. Mua "0,01 BTC" là chuyện bình thường — không cần mua nguyên 1 đồng.</LC>
+      </div>
+
+      <div className="card">
+        <h2>2 · Thuật ngữ giá & xu hướng (trong app)</h2>
+        <LC q="EMA50 / EMA200 (đường trung bình)">"Giá trung bình" của BTC trong 50 (hoặc 200) ngày gần nhất, làm mượt để thấy xu hướng. Giá <b>trên</b> đường TB = xu hướng khoẻ; <b>dưới</b> = yếu. EMA200 là mốc dài hạn quan trọng nhất.</LC>
+        <LC q="Regime (bull / bear)">App định nghĩa: giá <b>trên</b> EMA200 = <b>Bull (tăng)</b>; <b>dưới</b> = <b>Bear (giảm)</b>. Backtest 10 năm cho thấy đây là tín hiệu sạch nhất: bull 90 ngày sau thường +30% (33% số lần giảm), bear +8% (54% giảm).</LC>
+        <LC q="RSI (chỉ số sức mạnh tương đối)">Đo giá tăng "nóng" hay giảm "quá đà", thang 0–100. <b>&gt;70 = quá mua</b> (dễ điều chỉnh), <b>&lt;30 = quá bán</b> (đã giảm sâu). Không dùng một mình để mua/bán.</LC>
+        <LC q="Xu hướng ngắn/trung/dài hạn">Ngắn (ngày–tuần), trung (tuần–tháng), dài (tháng–năm). Cùng một tín hiệu có thể khác nghĩa ở mỗi khung — vì thế app tách riêng "regime 90 ngày" và "định giá 1 năm".</LC>
+        <LC q="ATH / ATL">All-Time High / Low = đỉnh / đáy cao/thấp nhất mọi thời đại.</LC>
+      </div>
+
+      <div className="card">
+        <h2>3 · Tâm lý & phái sinh</h2>
+        <LC q="Fear & Greed Index (Sợ hãi & Tham lam)">Chỉ số tâm lý đám đông 0–100. <b>0 = sợ tột độ</b> (thường là lúc mua tốt), <b>100 = tham lam tột độ</b> (dễ điều chỉnh). "Hãy tham lam khi người khác sợ hãi."</LC>
+        <LC q="Funding rate (phí đòn bẩy)">Trên thị trường hợp đồng tương lai, phe Long (đặt cược giá lên) và Short (giá xuống) trả phí cho nhau mỗi 8 giờ. <b>Funding cao</b> = phe Long quá đông/đòn bẩy nóng → dễ bị "long squeeze" (rớt nhanh khi họ bị thanh lý hàng loạt).</LC>
+        <LC q="Long / Short / Đòn bẩy (leverage)">Long = đặt cược giá LÊN; Short = giá XUỐNG. Đòn bẩy = vay để cược lớn hơn vốn (x5, x10…) — <b>lãi to nhưng cháy tài khoản cực nhanh</b>. Người mới & đầu tư dài hạn KHÔNG nên đụng đòn bẩy.</LC>
+        <LC q="Open Interest (OI)">Tổng số hợp đồng phái sinh đang mở — đo mức độ đòn bẩy toàn thị trường. OI tăng nóng + funding cao = thị trường "căng", dễ biến động mạnh.</LC>
+      </div>
+
+      <div className="card">
+        <h2>4 · On-chain & định giá</h2>
+        <LC q="MVRV (Z-score)">So sánh <b>giá hiện tại</b> với <b>giá vốn trung bình toàn mạng</b> (giá mà mọi người đã mua vào). MVRV cao = phần đông đang lãi đậm → vùng đắt/đỉnh. MVRV thấp/quanh 1 = rẻ → vùng đáy. App dùng nó cho tín hiệu <b>dài hạn 1 năm</b>.</LC>
+        <LC q="Realized Price (giá vốn thật)">Giá vốn trung bình của toàn mạng — như "giá hoà vốn" của cả thị trường. Thường là mốc hỗ trợ mạnh ở đáy chu kỳ.</LC>
+        <LC q="Exchange netflow (dòng vào/ra sàn)">BTC chảy VÀO sàn nhiều = có thể sắp bán (áp lực giảm); RÚT RA khỏi sàn = tích trữ dài hạn (tín hiệu tốt). Nguồn free khó lấy nên app chưa tự động phần này.</LC>
+        <LC q="Halving (giảm nửa phần thưởng)">Mỗi ~4 năm, phần thưởng đào BTC giảm một nửa → nguồn cung mới ít đi. Lịch sử các chu kỳ tăng lớn thường theo sau halving (không đảm bảo lặp lại).</LC>
+      </div>
+
+      <div className="card">
+        <h2>5 · Kinh tế vĩ mô ảnh hưởng BTC</h2>
+        <LC q="Fed & FOMC (cuộc họp lãi suất Mỹ)">Fed = ngân hàng trung ương Mỹ; FOMC = cuộc họp quyết định lãi suất (8 lần/năm). Quanh ngày họp, mọi tài sản rủi ro — kể cả BTC — <b>biến động mạnh, khó đoán hướng</b>.</LC>
+        <LC q="Lãi suất & thanh khoản">Lãi suất cao / hút tiền về = ít tiền rẻ chảy vào tài sản rủi ro → bất lợi cho BTC. Lãi suất giảm / bơm tiền = thuận lợi.</LC>
+        <LC q="Chỉ số Đô la (DXY) & lợi suất 10 năm">Đô mạnh lên hoặc lợi suất trái phiếu tăng = thường đè giá BTC. App theo dõi qua thẻ "Vĩ mô (FRED)".</LC>
+        <LC q="Cung tiền M2">Tổng lượng tiền trong nền kinh tế. M2 nới rộng (bơm tiền) thường đi cùng tài sản rủi ro tăng; M2 co lại = siết.</LC>
+        <LC q="ETF Bitcoin giao ngay">Quỹ niêm yết trên sàn chứng khoán, gom tiền nhà đầu tư đi mua BTC thật. ETF <b>mua ròng</b> = lực đỡ giá; <b>bán ròng/rút</b> = thiếu lực mua. Là kênh tiền lớn (tổ chức) vào BTC.</LC>
+        <LC q="MicroStrategy (Strategy)">Công ty nổi tiếng gom mua BTC khổng lồ, gần như không bán. Khi họ mua/bán bất thường → tín hiệu đáng chú ý về tâm lý "tay to".</LC>
+      </div>
+
+      <div className="card">
+        <h2>6 · Chiến lược cho người dài hạn</h2>
+        <LC q="DCA (mua trung bình giá)">Chia tiền mua <b>đều đặn</b> theo lịch (vd mỗi tuần/tháng một ít) thay vì dồn một lần. Giúp không phải đoán đáy, giảm rủi ro mua trúng đỉnh. <b>Chiến lược an toàn nhất cho người mới & dài hạn.</b></LC>
+        <LC q="DCA điều tiết theo định giá (app này gợi ý)">Vẫn DCA đều, nhưng <b>rẻ thì mua nhiều hơn, đắt thì mua ít lại</b> — dựa trên MVRV. Thẻ "Gợi ý mua" cho hệ số ×0.3 đến ×2 mức định kỳ.</LC>
+        <LC q="Quản trị rủi ro (position sizing)">Chỉ dùng <b>tiền nhàn rỗi, sẵn sàng mất</b>. Không vay mượn, không all-in. Quy tắc phổ biến: chỉ để một tỷ trọng nhỏ danh mục vào crypto tuỳ khẩu vị rủi ro.</LC>
+        <LC q="HODL">Từ lóng của "hold" — mua và <b>giữ dài hạn</b>, không bán theo biến động ngắn. Hợp với người tin vào BTC nhiều năm.</LC>
+        <LC q="Chốt lời & tái cân bằng">Có kế hoạch bán bớt khi lãi lớn / định giá quá cao (MVRV cao), đưa danh mục về tỷ trọng mục tiêu. Tránh lòng tham giữ tới khi sập.</LC>
+      </div>
+
+      <div className="card">
+        <h2>7 · Kiến thức về app & backtest</h2>
+        <LC q="Backtest là gì?">Lấy công thức/luật đem thử ngược lại quá khứ để xem "nếu áp dụng hồi đó thì đúng không". Biến app từ cảm tính thành có kiểm chứng bằng số liệu thật.</LC>
+        <LC q="Out-of-sample (OOS) & overfit">Chọn luật trên một đoạn lịch sử, rồi <b>kiểm chứng trên đoạn KHÁC chưa dùng</b>. Nếu vẫn đúng = đáng tin. Overfit = chỉnh luật khớp hoàn hảo quá khứ nhưng ra tương lai lại trật — cạm bẫy lớn nhất.</LC>
+        <LC q="Percentile (phân vị)">Xếp hạng một giá trị so với lịch sử của chính nó. "MVRV phân vị 17/100" = hiện rẻ hơn 83% thời gian trong quá khứ.</LC>
+        <LC q='"Tiền lệ tới đáy" nghĩa là gì?'>Thống kê: các lần quá khứ có bối cảnh GIỐNG hiện tại thì sau đó giá còn giảm thêm bao nhiêu & mất bao lâu tới đáy. Là <b>tiền lệ, KHÔNG phải dự báo</b> — khoảng rộng = độ bất định.</LC>
+        <LC q="Vì sao không đoán được đáy/đỉnh chính xác?">Giá phụ thuộc vô số yếu tố không biết trước (Fed, biến cố, dòng tiền). Mọi công cụ chỉ cho <b>xác suất theo tiền lệ</b>, không phải điểm chính xác. Ai hứa "chắc chắn" là đang lừa.</LC>
+      </div>
+
+      <div className="card">
+        <h2>8 · Cạm bẫy & an toàn</h2>
+        <LC q="FOMO & FUD">FOMO = sợ bỏ lỡ → mua đuổi lúc giá đã cao. FUD = tin sợ hãi → bán tháo lúc đáy. Hai kẻ thù lớn nhất của nhà đầu tư. Có kế hoạch (DCA) để không bị cảm xúc dắt mũi.</LC>
+        <LC q="Lừa đảo thường gặp">Hứa "lãi cố định/x2 tài khoản", airdrop giả, mạo danh sàn/người nổi tiếng, link lạ xin seed phrase. <b>Không ai cho tiền miễn phí.</b> Không bao giờ nhập 12 từ khôi phục vào website.</LC>
+        <LC q="Stablecoin (USDT/USDC)">Tiền số neo giá 1 USD, dùng để "đứng ngoài" khi chưa muốn giữ BTC. Tiện nhưng vẫn có rủi ro nhà phát hành — chọn loại uy tín.</LC>
+        <LC q="Altcoin & rủi ro">Các coin khác ngoài BTC. Biến động mạnh hơn, rủi ro cao hơn nhiều, phần lớn về 0 theo thời gian. Người mới nên tập trung BTC trước.</LC>
+        <LC q="Thuế & pháp lý">Tuỳ quốc gia, lãi từ crypto có thể phải khai thuế. Tự tìm hiểu quy định nơi bạn ở.</LC>
+      </div>
+
+      <div className="card" style={{textAlign:'center'}}>
+        <div style={{fontSize:'13px',color:'var(--muted)',lineHeight:1.6}}>
+          Nội dung mang tính giáo dục, <b>không phải lời khuyên đầu tư</b>.<br/>Bấm “📊 Tín hiệu” ở trên để quay lại bảng theo dõi.
+        </div>
       </div>
     </div>
   );
