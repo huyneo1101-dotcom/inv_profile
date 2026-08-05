@@ -291,6 +291,43 @@ def bottom_analog(dates, vals, e200, cm_mvrv, cur_regime, cur_pct, window=270, b
         "pctNearBottom": round(sum(1 for x in dds if x > -0.03) / len(dds) * 100, 1),
     }
 
+def track_record(dates, vals, e200, hist_rows, horizons=(30, 90)):
+    """So sanh KY VONG (regime %giam tren toan lich su sau) vs THUC TE (tich luy tu
+    data/history.json ke tu khi app bat dau chay). Cung thuoc do -> phat hien 'troi'."""
+    n = len(vals)
+    def agg_deep(h):
+        b = {"bull": [0, 0], "bear": [0, 0]}
+        for t in range(200, n - h):
+            if not e200[t]: continue
+            reg = "bull" if vals[t] > e200[t] else "bear"
+            b[reg][0] += 1
+            if vals[t + h] < vals[t]: b[reg][1] += 1
+        return {k: {"n": v[0], "pctDown": round(v[1] / v[0] * 100, 1) if v[0] else None} for k, v in b.items()}
+    rows = sorted([r for r in hist_rows if r.get("price") and r.get("date")], key=lambda r: r["date"])
+    pmap = {r["date"]: r["price"] for r in rows}
+    def price_after(d0, h):
+        base = datetime.date.fromisoformat(d0)
+        for off in range(h, h + 4):
+            k = (base + datetime.timedelta(days=off)).isoformat()
+            if k in pmap: return pmap[k]
+        return None
+    def agg_live(h):
+        b = {"bull": [0, 0], "bear": [0, 0]}
+        for r in rows:
+            e, p = r.get("ema200"), r.get("price")
+            if not e or not p: continue
+            pf = price_after(r["date"], h)
+            if pf is None: continue
+            reg = "bull" if p > e else "bear"
+            b[reg][0] += 1
+            if pf < p: b[reg][1] += 1
+        return {k: {"n": v[0], "pctDown": round(v[1] / v[0] * 100, 1) if v[0] else None} for k, v in b.items()}
+    exp, liv = {}, {}
+    for h in horizons:
+        exp["h" + str(h)] = agg_deep(h); liv["h" + str(h)] = agg_live(h)
+    return {"horizons": list(horizons), "expected": exp, "live": liv,
+            "startDate": rows[0]["date"] if rows else None, "nHistory": len(rows)}
+
 def main():
     out_path = "data/backtest.json"; horizon = 90
     a = sys.argv[1:]
@@ -394,6 +431,11 @@ def main():
     bottom = None
     if lt_res and lt_res["current"].get("pct") is not None:
         bottom = bottom_analog(dates, vals, e200, cm_mvrv, cur_regime, lt_res["current"]["pct"])
+    try:
+        hist_rows = (json.load(open("data/history.json")) or {}).get("rows", [])
+    except Exception:
+        hist_rows = []
+    track = track_record(dates, vals, e200, hist_rows)
 
     res = {
         "generatedAt": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -415,6 +457,7 @@ def main():
                         "regimeStat": rstat or {"n": 0}, "statement": stmt},
             "longterm": lt_res,
             "bottomAnalog": bottom,
+            "trackRecord": track,
         },
     }
     os.makedirs(os.path.dirname(out_path), exist_ok=True)

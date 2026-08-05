@@ -762,6 +762,36 @@ function App(){
         </div>;
       })()}
 
+      {/* THÀNH TÍCH THẬT (TRACK RECORD) */}
+      {backtest && backtest.core && backtest.core.trackRecord && (()=>{
+        const tr = backtest.core.trackRecord;
+        const elapsed = tr.startDate ? Math.floor((Date.now()-new Date(tr.startDate))/86400000) : 0;
+        const Row = ({h})=>{
+          const key='h'+h, exp=tr.expected[key]||{}, liv=tr.live[key]||{};
+          const cell=(o)=> (o && o.n>0) ? <span><b>{o.pctDown}%</b> <span style={{color:'var(--muted)'}}>({o.n})</span></span> : <span style={{color:'var(--muted)'}}>—</span>;
+          const need=Math.max(0, h - elapsed);
+          const liveN=(liv.bull&&liv.bull.n||0)+(liv.bear&&liv.bear.n||0);
+          return <div style={{marginTop:12}}>
+            <div className="hint" style={{marginBottom:4,fontWeight:700,color:'var(--text)'}}>Sau {h} ngày · % số lần giá THẤP hơn</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,fontSize:'13px',alignItems:'center'}}>
+              <span style={{color:'var(--muted)'}}></span><span style={{color:'var(--muted)',textAlign:'right'}}>Kỳ vọng</span><span style={{color:'var(--muted)',textAlign:'right'}}>Thực tế</span>
+              <span style={{color:'var(--green)'}}>Bull</span><span style={{textAlign:'right'}}>{exp.bull?exp.bull.pctDown+'%':'—'}</span><span style={{textAlign:'right'}}>{cell(liv.bull)}</span>
+              <span style={{color:'var(--red)'}}>Bear</span><span style={{textAlign:'right'}}>{exp.bear?exp.bear.pctDown+'%':'—'}</span><span style={{textAlign:'right'}}>{cell(liv.bear)}</span>
+            </div>
+            {liveN===0 && <div className="hint" style={{marginTop:4}}>Chưa có mẫu — cần thêm ~{need} ngày dữ liệu liên tục.</div>}
+          </div>;
+        };
+        return <div className="card">
+          <h2>Thành tích thật (đang theo dõi)</h2>
+          <div className="hint" style={{lineHeight:1.6}}>So sánh app <b>nói gì</b> (kỳ vọng từ backtest 10 năm) với <b>thực tế diễn ra</b> kể từ khi bắt đầu ghi nhật ký. Số trong ngoặc = số mẫu đã chấm. Khi "thực tế" lệch nhiều so với "kỳ vọng" → mô hình đang trôi, cần xem lại.</div>
+          <Row h={30}/>
+          <Row h={90}/>
+          <div className="hint" style={{marginTop:12}}>
+            📓 Nhật ký từ <b>{tr.startDate||'—'}</b> · {tr.nHistory} ngày dữ liệu (đã ~{elapsed} ngày). Bảng tự đầy dần theo thời gian — chưa đủ mẫu thì chưa kết luận được, đó là sự thật thay vì con số đẹp giả.
+          </div>
+        </div>;
+      })()}
+
       {/* THÔNG BÁO */}
       <div className="card">
         <h2>Thông báo</h2>
