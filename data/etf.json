@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-15T01:54:42Z",
+  "generatedAt": "2026-08-16T02:02:16Z",
   "source": "farside.co.uk/btc (best-effort)",
   "unit": "trieu USD",
   "latestDate": "2026-08-14",
-  "latestNetFlow": -0.7,
+  "latestNetFlow": -56.2,
   "outflowStreak": 3,
   "recent": [
     {
@@ -32,7 +32,7 @@
     },
     {
       "date": "2026-08-14",
-      "total": -0.7
+      "total": -56.2
     }
   ]
 }
