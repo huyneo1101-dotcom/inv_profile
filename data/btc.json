@@ -1,17 +1,13 @@
 {
-  "generatedAt": "2026-09-19T04:47:31Z",
+  "generatedAt": "2026-09-20T05:05:00Z",
   "note": "Auto by Action. App uu tien LIVE CoinGecko; day la du phong.",
   "currency": "usd",
-  "price": 80942.12,
-  "ema50": 74228.97,
-  "ema200": 74226.96,
-  "rsi14": 63.6,
+  "price": 80405.66,
+  "ema50": 74482.28,
+  "ema200": 74282.54,
+  "rsi14": 61.0,
   "trend": "above_both",
   "history": [
-    {
-      "date": "2026-06-23",
-      "price": 63937.29
-    },
     {
       "date": "2026-06-24",
       "price": 62662.29
@@ -365,8 +361,12 @@
       "price": 80873.58
     },
     {
-      "date": "2026-09-19",
-      "price": 80942.12
+      "date": "2026-09-20",
+      "price": 81236.41
+    },
+    {
+      "date": "2026-09-20",
+      "price": 80405.66
     }
   ]
 }
