@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T05:55:01Z",
+  "generatedAt": "2026-09-30T05:45:30Z",
   "note": "Auto tu FRED (St. Louis Fed). DTWEXBGS=chi so Do broad, DGS10=10Y, DFII10=10Y real, WM2NS=M2.",
   "dxy": {
     "value": 120.33,
@@ -8,16 +8,16 @@
     "date": "2026-09-25"
   },
   "us10y": {
-    "value": 5.17,
-    "chg20": 0.5,
+    "value": 5.24,
+    "chg20": 0.51,
     "trend": "up",
-    "date": "2026-09-25"
+    "date": "2026-09-28"
   },
   "realYield": {
-    "value": 2.83,
-    "chg20": 0.49,
+    "value": 2.9,
+    "chg20": 0.48,
     "trend": "up",
-    "date": "2026-09-25"
+    "date": "2026-09-28"
   },
   "m2": {
     "value": 23305.5,
