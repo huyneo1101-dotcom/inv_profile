@@ -1,0 +1,50 @@
+name: Tin hieu coin qua Zalo
+# Moi 15 phut: chay ca thu, roi tin_hieu_coin.py soat nen 4h/ngay cua BTC, ETH, SOL, BNB, XRP,
+# nhan bot Zalo khi co lenh vao / doi cat lo / dong lenh. Loai tin hieu bat/tat doc tu data/coin-backtest.json
+# (do kiem_thu_coin.py sinh). Trang thai lenh ao o data/coin-state.json, chi commit khi doi.
+# Gui truot -> buoc do, su kien do khong ghi, luot sau bao lai.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: coin-signal
+  cancel-in-progress: false
+jobs:
+  signal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ca thu (phai dat moi chay may that)
+        run: python3 thu_tin_hieu_coin.py
+
+      - name: Soat tin hieu va bao Zalo
+        env:
+          ZALO_BOT_TOKEN: ${{ secrets.ZALO_BOT_TOKEN }}
+          ZALO_CHAT_ID: ${{ secrets.ZALO_CHAT_ID }}
+          VON_USDT: ${{ secrets.VON_USDT }}
+        run: python3 tin_hieu_coin.py
+
+      - name: Commit coin-state.json neu doi
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(git status --porcelain -- data/coin-state.json)" ]; then
+            echo "khong doi — bo qua."
+            exit 0
+          fi
+          git add data/coin-state.json
+          git commit -m "chore: cap nhat trang thai tin hieu coin"
+          ok=0
+          for i in 1 2 3 4; do
+            if git pull --rebase origin main && git push; then ok=1; break; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i*3))
+          done
+          [ "$ok" = 1 ] || { echo "Day state that bai 4 lan: luot sau co the bao trung."; exit 1; }

@@ -44,7 +44,14 @@ ca("vào vùng gom -> MUA", tao_tin(BTC, BT, rows("s", "s", "s"), {**DA, "lastLo
 ca("ra vùng gom -> báo", tao_tin(BTC, bt("Can chu y"), rows("s", "s", "s"), DA), ["lastLongtermTier"])
 ca("lần đầu -> tin bắt đầu", tao_tin(BTC, BT, rows("s", "s", "s"), {}), ["zaloStarted"])
 t = tao_tin(BTC, BT, rows("b", "s", "s", "s"), {**DA, "lastRegime": "bull"})[0][0][2]
-CA.append("SHORT" in t and "8,5%" in t); print("ĐẠT" if CA[-1] else "TRƯỢT", "tin SHORT kèm số lịch sử")
+CA.append("XU HƯỚNG DÀI HẠN BTC ĐỔI CHIỀU: GIẢM" in t and "8,5%" in t)
+print("ĐẠT" if CA[-1] else "TRƯỢT", "tin đổi chiều GIẢM kèm số lịch sử 90 ngày")
+# PHẢI CHẶN: tin xu hướng không được tự xưng là lệnh, không còn câu chê short, phải trỏ sang tin [COIN]
+CA.append("KHÔNG ủng hộ short" not in t and "TÍN HIỆU SHORT" not in t and "[COIN]" in t and "không phải lệnh" in t)
+print("ĐẠT" if CA[-1] else "TRƯỢT", "tin GIẢM không phải lệnh, trỏ sang hệ [COIN]")
+t = tao_tin(BTC, BT, rows("s", "b", "b", "b"), DA)[0][0][2]
+CA.append("ĐỔI CHIỀU: TĂNG" in t and "TÍN HIỆU LONG" not in t and "[COIN]" in t and "30,4%" in t)
+print("ĐẠT" if CA[-1] else "TRƯỢT", "tin đổi chiều TĂNG không phải lệnh, trỏ sang hệ [COIN]")
 
 print(f"{sum(CA)}/{len(CA)} ca đạt")
 sys.exit(0 if all(CA) else 1)

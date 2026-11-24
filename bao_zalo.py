@@ -5,8 +5,10 @@ Chạy trong btc-data.yml sau khi data/*.json đã cập nhật. Chỉ báo khi 
 không báo lặp mỗi ngày:
   (i)   NÊN MUA VÀO  — định giá dài hạn (MVRV, backtest.json) chuyển vào bậc "Thoang"
         (phân vị <= 33/100, vùng gom). Ra khỏi vùng cũng báo để dừng tăng mua.
-  (ii)  LONG / SHORT — giá vượt lên / thủng xuống EMA200, phải giữ 3 ngày liền trong
-        history.json mới tính là đổi pha (chặn báo lật qua lật lại khi giá quanh EMA200).
+  (ii)  XU HƯỚNG DÀI HẠN BTC ĐỔI CHIỀU — giá vượt lên / thủng xuống EMA200, phải giữ 3 ngày liền
+        trong history.json mới tính là đổi pha (chặn báo lật qua lật lại khi giá quanh EMA200).
+        Đây là BỐI CẢNH 90 ngày, không phải lệnh: lệnh vào/ra cụ thể do tin [COIN] của hệ tín hiệu
+        coin (tin_hieu_coin.py) gửi (sửa 24/11/2026 để hai hệ không nói hai lời ngược nhau).
 Lần chạy đầu (state rỗng) gửi một tin "bắt đầu theo dõi" kèm trạng thái hiện tại.
 
 Gửi trượt thì KHÔNG ghi trạng thái của sự kiện đó (mai báo lại) và trả mã 1 cho
@@ -65,14 +67,14 @@ def tao_tin(btc, bt, hist, st):
     lt = ((bt.get("core") or {}).get("longterm") or {}).get("current") or {}
     bac, pct = lt.get("tier"), lt.get("pct")
     pha = pha_xac_nhan(hist.get("rows", []))
-    dong_gia = f"Giá {usd(gia)}" + (f", EMA200 {usd(e200)}" if e200 else "") + "." if gia else ""
+    dong_gia = f"Giá {usd(gia)}" + (f", đường trung bình 200 ngày {usd(e200)}" if e200 else "") + "." if gia else ""
 
     if not st.get("zaloStarted"):
-        ten_pha = {"bull": "pha TĂNG (giá trên EMA200)", "bear": "pha GIẢM (giá dưới EMA200)"}.get(pha, "chưa rõ pha")
+        ten_pha = {"bull": "pha TĂNG (giá trên đường trung bình 200 ngày)", "bear": "pha GIẢM (giá dưới đường trung bình 200 ngày)"}.get(pha, "chưa rõ pha")
         ten_bac = "VÙNG GOM — nên mua vào dần" if bac == "Thoang" else (f"bậc {bac}" if bac else "chưa có số")
         nd = (f"[BTC] Bắt đầu báo tín hiệu qua Zalo.\nHiện tại: {ten_pha}; định giá dài hạn {ten_bac}"
               + (f" (MVRV phân vị {round(pct)}/100)" if pct is not None else "") + f".\n{dong_gia}\n"
-              "Từ giờ chỉ nhắn khi: vào/ra vùng nên mua, hoặc xu hướng đổi chiều (Long/Short).\n" + APP_URL)
+              "Từ giờ chỉ nhắn khi: vào/ra vùng nên mua, hoặc xu hướng dài hạn đổi chiều.\n" + APP_URL)
         tin.append(("zaloStarted", True, nd))
         im["lastRegime"] = pha or st.get("lastRegime")
         im["lastLongtermTier"] = bac or st.get("lastLongtermTier")
@@ -93,15 +95,12 @@ def tao_tin(btc, bt, hist, st):
             im["lastLongtermTier"] = bac
 
     if pha and pha != st.get("lastRegime"):
-        if pha == "bull":
-            nd = (f"[BTC] TÍN HIỆU LONG: giá nằm trên EMA200 {SO_NGAY_XAC_NHAN} ngày liền, "
-                  f"xu hướng chuyển TĂNG. {dong_gia}" + thong_ke_pha(bt, "bull") + "\n"
-                  "Không phải lời khuyên đầu tư; dùng đòn bẩy thì đặt cắt lỗ dưới EMA200.\n" + APP_URL)
-        else:
-            nd = (f"[BTC] TÍN HIỆU SHORT: giá nằm dưới EMA200 {SO_NGAY_XAC_NHAN} ngày liền, "
-                  f"xu hướng chuyển GIẢM. {dong_gia}" + thong_ke_pha(bt, "bear") + "\n"
-                  "Lưu ý: số liệu lịch sử KHÔNG ủng hộ short dài hạn; an toàn hơn là ngừng Long, "
-                  "đứng ngoài. Short thì đặt cắt lỗ trên EMA200.\n" + APP_URL)
+        chieu = "TĂNG" if pha == "bull" else "GIẢM"
+        phia = "trên" if pha == "bull" else "dưới"
+        nd = (f"[BTC] XU HƯỚNG DÀI HẠN BTC ĐỔI CHIỀU: {chieu}, giá nằm {phia} đường trung bình 200 ngày {SO_NGAY_XAC_NHAN} ngày liền. "
+              f"{dong_gia}" + thong_ke_pha(bt, pha) + "\n"
+              "Đây là bối cảnh cho khoảng 90 ngày tới, không phải lệnh vào. Lệnh vào/ra cụ thể "
+              "(giá vào, cắt lỗ, cỡ lệnh) do tin [COIN] của hệ tín hiệu coin gửi.\n" + APP_URL)
         tin.append(("lastRegime", pha, nd))
     return tin, im
 

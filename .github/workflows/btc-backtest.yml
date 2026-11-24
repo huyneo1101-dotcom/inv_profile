@@ -20,14 +20,19 @@ jobs:
       - name: Run backtest
         run: |
           python3 backtest.py --out data/backtest.json --horizon 90
+      - name: Cap nhat so tin hieu coin (tham so co dinh, chi duoc TAT khong tu BAT)
+        if: always()
+        run: |
+          python3 kiem_thu_coin.py --chi-thong-ke
       - name: Commit if changed
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- data/backtest.json; then
+          if git diff --quiet -- data/backtest.json data/coin-backtest.json; then
             echo "khong doi — bo qua."
           else
-            git add data/backtest.json
+            git add data/backtest.json data/coin-backtest.json
             git commit -m "chore: cap nhat ket qua backtest bo luat"
             for i in 1 2 3 4; do
               git pull --rebase origin main && git push && break || sleep $((i*3))

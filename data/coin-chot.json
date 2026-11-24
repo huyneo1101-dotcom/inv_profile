@@ -1,0 +1,8 @@
+{
+  "ghiChu": "Quyết định tay của chủ app, máy chạy thật áp lên coin-backtest.json. CHỈ được tắt loại đang bật, không bật được loại kiểm thử đã tắt (tin_hieu_coin.ap_chot).",
+  "c_SHORT": {
+    "bat": false,
+    "lyDo": "tạm tắt, chờ mày chốt vì thử trên dữ liệu 2023 tới nay lãi rất mỏng, chưa phân biệt được với may rủi",
+    "ngay": "2026-11-24"
+  }
+}
