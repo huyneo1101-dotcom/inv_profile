@@ -1,6 +1,7 @@
 {
+  "lastFedMeeting": null,
+  "lastLongtermTier": "Thoang",
+  "lastRegime": "bear",
   "note": "Trang thai gui push (ntfy) de chong trung. Do Action btc-data.yml cap nhat.",
-  "lastRegime": null,
-  "lastLongtermTier": null,
-  "lastFedMeeting": null
+  "zaloStarted": true
 }
