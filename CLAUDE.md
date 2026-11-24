@@ -31,6 +31,7 @@ Một khoá duy nhất `btc-tin-hieu:v1` (object JSON), đọc/ghi qua `loadStat
 ## Tự cập nhật dữ liệu (GitHub Actions)
 - `btc-data.yml` (hằng ngày): giá+EMA+RSI, macro FRED, MVRV, ETF, 8-K MSTR → ghi `data/*.json`.
 - `btc-backtest.yml` (hằng tuần): chạy lại `backtest.py` (chống lookahead) → `data/backtest.json`.
+- **Báo Zalo** (bước cuối `btc-data.yml`, script `bao_zalo.py`, ca thử `thu_bao_zalo.py`): nhắn bot JustUs hộ `justus_huy` (chỉ Huy nhận) khi (i) định giá dài hạn vào/ra bậc `Thoang` = NÊN MUA VÀO; (ii) giá ở trên/dưới EMA200 đủ 3 ngày liền = LONG/SHORT. Chỉ báo khi đổi trạng thái, chống trùng bằng `data/push-state.json`. Secret `ZALO_BOT_TOKEN` + `ZALO_CHAT_ID` (cắm 24/11/2026 từ `congcu/gui_zalo.py`). Gửi trượt ⇒ bước đỏ, state không ghi, hôm sau báo lại.
 - Secret tuỳ chọn `FRED_API_KEY` (Settings → Secrets → Actions). Thiếu key vẫn chạy, chỉ bỏ phần macro.
 
 ## Deploy
